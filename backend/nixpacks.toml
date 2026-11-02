@@ -2,9 +2,9 @@
 # Migrations are not run here on purpose: they are applied by hand (`make migrate`).
 #
 # Nixpacks writes [variables] into the Dockerfile as `ARG X` + `ENV X=$X` and
-# expects `--build-arg` for each one. Easypanel builds that Dockerfile without
-# them, so every variable arrives empty. Only plan-time settings belong in
-# [variables]; whatever a command needs is set inline in that command.
+# expects `--build-arg` for each one. Easypanel only passes the service's own
+# environment variables, so one declared only here arrives empty. Only plan-time
+# settings belong in [variables]; whatever a command needs is set inline in it.
 
 providers = ["python"]
 

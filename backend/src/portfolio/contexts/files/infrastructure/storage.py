@@ -3,15 +3,21 @@ call runs in a thread to keep the event loop free."""
 
 import asyncio
 import json
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from mypy_boto3_s3 import S3Client
+
+if TYPE_CHECKING:
+    # Type stubs, a development dependency: never imported at runtime.
+    from mypy_boto3_s3 import S3Client
 
 
-def create_s3_client(endpoint_url: str, access_key: str, secret_key: str, region: str) -> S3Client:
+def create_s3_client(
+    endpoint_url: str, access_key: str, secret_key: str, region: str
+) -> "S3Client":
     return boto3.client(
         "s3",
         endpoint_url=endpoint_url,
@@ -47,7 +53,7 @@ def public_read_policy(bucket: str) -> str:
 
 
 class S3Storage:
-    def __init__(self, client: S3Client, bucket: str, public_base_url: str) -> None:
+    def __init__(self, client: "S3Client", bucket: str, public_base_url: str) -> None:
         self._client = client
         self._bucket = bucket
         self._public_base_url = public_base_url

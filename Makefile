@@ -7,7 +7,7 @@ ENV_FILE := $(if $(wildcard .env),--env-file ../.env,)
 RUN := cd $(BACKEND) && uv run $(ENV_FILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev-api dev-worker dev-web build-web check-web migrate migration create-admin setup-storage reindex test test-unit cov lint format typecheck imports check
+.PHONY: help install dev-api dev-worker dev-web build-web check-web migrate migration create-admin setup-storage reindex test test-unit cov lint format typecheck imports runtime check
 
 help: ## List the commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -68,4 +68,7 @@ typecheck: ## mypy --strict
 imports: ## Architecture boundaries (import-linter)
 	cd $(BACKEND) && uv run lint-imports
 
-check: lint typecheck imports cov check-web ## Everything that must pass before a push
+runtime: ## Import every entrypoint with production dependencies only, as the deploy does
+	cd $(BACKEND) && uv run --isolated --no-dev python -c "import portfolio.main, portfolio.worker, portfolio.cli"
+
+check: lint typecheck imports runtime cov check-web ## Everything that must pass before a push
