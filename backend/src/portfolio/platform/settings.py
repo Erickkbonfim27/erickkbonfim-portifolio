@@ -63,6 +63,15 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in raw.split(",") if origin.strip()]
         return raw
 
+    @field_validator("cors_origins", mode="after")
+    @classmethod
+    def _explicit_origins(cls, origins: list[str]) -> list[str]:
+        # Credentials are allowed, so "*" would let any website call the admin API
+        # with the admin's cookie.
+        if "*" in origins:
+            raise ValueError("CORS_ORIGINS: list the site's origins, '*' is not allowed")
+        return origins
+
     @field_validator(
         "cookie_domain",
         "rabbitmq_url",

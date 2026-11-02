@@ -1,4 +1,5 @@
 from sqlalchemy import MetaData
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -22,12 +23,20 @@ class Base(DeclarativeBase):
 
 
 def asyncpg_url(database_url: str) -> str:
-    """Accept the URL as hosting panels hand it out (postgres://, postgresql://)
-    and point it at the asyncpg driver. An explicit driver is left as given."""
-    scheme, separator, rest = database_url.partition("://")
-    if separator and scheme in {"postgres", "postgresql"}:
-        return f"postgresql+asyncpg://{rest}"
-    return database_url
+    """Accept the URL as hosting panels hand it out and point it at asyncpg.
+
+    postgres:// and postgresql:// get the asyncpg driver, and libpq's `sslmode`
+    (Easypanel adds `?sslmode=disable`) becomes asyncpg's `ssl`, which takes the
+    same values. asyncpg rejects `sslmode` on every connection otherwise.
+    """
+    url = make_url(database_url)
+    if url.drivername in {"postgres", "postgresql"}:
+        url = url.set(drivername="postgresql+asyncpg")
+    if url.drivername == "postgresql+asyncpg" and "sslmode" in url.query:
+        mode = url.query["sslmode"]
+        ssl = mode if isinstance(mode, str) else mode[-1]  # repeated: the last one wins
+        url = url.difference_update_query(["sslmode"]).update_query_dict({"ssl": ssl})
+    return url.render_as_string(hide_password=False)
 
 
 def create_engine(database_url: str) -> AsyncEngine:

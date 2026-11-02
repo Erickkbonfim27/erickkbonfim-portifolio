@@ -9,8 +9,8 @@ Nothing connects: the values only have the shape of the real ones.
 import os
 
 SHAPES = {
-    # As Easypanel hands it out: plain postgres://, no driver.
-    "DATABASE_URL": "postgres://user:password@portifolio_postgres:5432/portfolio",
+    # As Easypanel hands it out: plain postgres://, no driver, libpq's sslmode.
+    "DATABASE_URL": "postgres://user:password@portifolio_postgres:5432/portfolio?sslmode=disable",
     # The public domain: the S3 client rejects internal names with '_'.
     "S3_ENDPOINT_URL": "https://s3.example.dev",
     "S3_ACCESS_KEY": "access",

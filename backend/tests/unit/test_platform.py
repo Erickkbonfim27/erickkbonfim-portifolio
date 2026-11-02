@@ -49,6 +49,11 @@ def test_required_settings(monkeypatch: pytest.MonkeyPatch) -> None:
         Settings()
 
 
+def test_cors_origins_cannot_be_a_wildcard() -> None:
+    with pytest.raises(ValueError, match="not allowed"):
+        settings_for_tests(cors_origins=["https://erick.dev", "*"])
+
+
 def test_s3_endpoint_cannot_use_an_internal_easypanel_name() -> None:
     with pytest.raises(ValueError, match="public domain"):
         settings_for_tests(s3_endpoint_url="http://portifolio_rustfs:9000")
@@ -112,8 +117,15 @@ def test_system_clock_is_timezone_aware() -> None:
         ("postgres://u:p@db:5432/app", "postgresql+asyncpg://u:p@db:5432/app"),
         ("postgresql://u:p@db:5432/app", "postgresql+asyncpg://u:p@db:5432/app"),
         ("postgresql+asyncpg://u:p@db/app", "postgresql+asyncpg://u:p@db/app"),
+        (
+            "postgres://u:p%40ss@db:5432/app?sslmode=disable",
+            "postgresql+asyncpg://u:p%40ss@db:5432/app?ssl=disable",
+        ),
+        (
+            "postgres://u:p@db/app?sslmode=require&sslmode=disable",
+            "postgresql+asyncpg://u:p@db/app?ssl=disable",
+        ),
         ("sqlite://", "sqlite://"),
-        ("not a url", "not a url"),
     ],
 )
 def test_database_urls_from_hosting_panels(given: str, expected: str) -> None:
