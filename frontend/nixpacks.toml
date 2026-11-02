@@ -7,9 +7,13 @@
 
 providers = ["node"]
 
+# Only plan-time settings belong in [variables]: Easypanel passes the service's own
+# environment as build args, so anything declared only here arrives empty in commands.
 [variables]
 NIXPACKS_NODE_VERSION = "22"
-NODE_ENV = "production"
+# Nixpacks detects Vite and adds its own Caddy with a default Caddyfile. Ours (CSP,
+# AGENTS.md proxy, caching) is used instead; two Caddy packages conflict in Nix.
+NIXPACKS_SPA_CADDY = "false"
 
 [phases.setup]
 nixPkgs = ["...", "caddy"]
