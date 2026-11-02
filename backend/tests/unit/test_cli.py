@@ -100,14 +100,15 @@ def test_setup_storage_applies_the_policy(
         async def dispose(self) -> None:
             Engine.disposed = True
 
-    class Qdrant:
+    class Closeable:
         async def close(self) -> None:
             return None
 
     class Infra:
         storage = S3Storage(s3, "portfolio", "https://files.test")  # type: ignore[arg-type]
         engine = Engine()
-        qdrant = Qdrant()
+        qdrant = Closeable()
+        dense = Closeable()
 
     monkeypatch.setattr(cli, "build_infrastructure", lambda _settings: Infra())
     for name, value in REQUIRED_SETTINGS.items():

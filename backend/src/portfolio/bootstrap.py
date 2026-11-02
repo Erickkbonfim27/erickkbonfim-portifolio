@@ -61,7 +61,8 @@ from portfolio.contexts.search.application.use_cases import (
     SearchUseCases,
     writer,
 )
-from portfolio.contexts.search.infrastructure.encoders import FastembedBm25, FastembedDense
+from portfolio.contexts.search.infrastructure.encoders import FastembedBm25
+from portfolio.contexts.search.infrastructure.openrouter import OpenRouterDense
 from portfolio.contexts.search.infrastructure.qdrant_index import QdrantIndex
 from portfolio.platform.clock import SystemClock
 from portfolio.platform.db import create_engine, create_session_factory
@@ -81,7 +82,7 @@ class Infrastructure:
     limiter: PostgresRateLimiter
     qdrant: AsyncQdrantClient
     index: QdrantIndex
-    dense: FastembedDense
+    dense: OpenRouterDense
     sparse: FastembedBm25
 
 
@@ -106,15 +107,16 @@ def build_infrastructure(settings: Settings) -> Infrastructure:
         limiter=PostgresRateLimiter(session_factory, settings.ip_hash_secret, clock.now),
         qdrant=qdrant,
         index=QdrantIndex(qdrant, settings.qdrant_collection),
-        # Loaded lazily on first use: an API that never searches never loads them.
-        dense=FastembedDense.create(
-            settings.dense_model, settings.dense_dimension, settings.fastembed_cache_dir
+        dense=OpenRouterDense.create(
+            settings.openrouter_api_key, settings.dense_model, settings.dense_dimension
         ),
+        # Loaded lazily on first use: an API that never searches never loads them.
         sparse=FastembedBm25.create(settings.fastembed_cache_dir),
     )
 
 
 async def close_infrastructure(infra: Infrastructure) -> None:
+    await infra.dense.close()
     await infra.qdrant.close()
     await infra.engine.dispose()
 

@@ -87,8 +87,11 @@ database, never in the repository.
 - Hybrid retrieval in Qdrant: dense vectors plus BM25 sparse vectors, with a
   language-specific stemmer and a `lang` filter (BM25 does not work across
   languages). If dense retrieval fails, search degrades to BM25 only.
-- The dense model is chosen by the eval (recall@k, MRR), not by opinion:
-  multilingual MiniLM in-process versus a hosted bge-m3.
+- Dense embeddings come from an API: `openai/text-embedding-3-small` (1536
+  dimensions, cosine) through OpenRouter. The in-process multilingual MiniLM it
+  replaced truncates at 128 tokens, about half of a full chunk; this model reads
+  up to 8191, and keeps the API process light on a small VPS. The eval checks the
+  choice with recall@k and MRR.
 - Chunks follow the semantic sections of the content (rich-text headings), not
   a fixed size. Content is curated, so its structure is the best boundary.
 
@@ -124,8 +127,9 @@ database, never in the repository.
 - Dense and BM25 vectors live in one Qdrant collection; Qdrant computes IDF and
   fuses both rankings with RRF. BM25 uses a Portuguese or English stemmer by the
   chunk's language, and every query is filtered by language.
-- fastembed models load on first use, in a thread; the API does not pay for them
-  until someone searches.
+- BM25 runs in-process (fastembed), loaded on first use in a thread. Only the
+  dense side depends on the provider: a query gives up on it after 5 seconds and
+  falls back to BM25, and indexing failures are retried by the worker's queue.
 
 ## MCP and agent-facing surfaces
 

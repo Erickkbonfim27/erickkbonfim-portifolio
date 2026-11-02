@@ -48,6 +48,7 @@ REQUIRED_SETTINGS: dict[str, object] = {
     "public_site_url": "https://erick.test/",
     "public_api_url": "https://api.erick.test",
     "qdrant_url": "http://qdrant.test:6333",
+    "openrouter_api_key": "sk-or-test",
 }
 
 

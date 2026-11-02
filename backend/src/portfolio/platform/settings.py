@@ -38,9 +38,12 @@ class Settings(BaseSettings):
     qdrant_url: str = Field(min_length=1)
     qdrant_api_key: str | None = None
     qdrant_collection: str = "portfolio"
-    dense_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-    dense_dimension: int = Field(default=384, gt=0)
-    # Where fastembed keeps downloaded models; a persistent volume avoids re-downloading.
+    # Dense embeddings through OpenRouter. Changing the model or its dimension
+    # needs `make reindex`: the collection is created with that size.
+    openrouter_api_key: str = Field(min_length=1)
+    dense_model: str = "openai/text-embedding-3-small"
+    dense_dimension: int = Field(default=1536, gt=0)
+    # Where fastembed keeps the BM25 files (a few KB of stopwords per language).
     fastembed_cache_dir: str | None = None
 
     # Rate limit keys are HMACs of the client IP; the raw IP is never stored.

@@ -18,7 +18,7 @@ from portfolio.contexts.search.domain.model import (
     chunk_document,
     chunk_id,
 )
-from portfolio.contexts.search.infrastructure.encoders import FastembedBm25, FastembedDense
+from portfolio.contexts.search.infrastructure.encoders import FastembedBm25
 from portfolio.contexts.search.interfaces import consumer
 from portfolio.platform.messaging import Delivery
 from tests.unit.content.test_public import seed
@@ -223,27 +223,6 @@ class TestIndexAndSearch:
         assert consumer.QUEUE.bindings == ("content.entry.*",)
 
 
-class FakeArray:
-    def __init__(self, values: list[float]) -> None:
-        self.values = values
-
-    def tolist(self) -> list[float]:
-        return self.values
-
-
-class FakeDenseModel:
-    builds = 0
-
-    def __init__(self) -> None:
-        FakeDenseModel.builds += 1
-
-    def embed(self, documents: Iterable[str], **_: Any) -> Iterable[Any]:
-        return [FakeArray([float(len(d)), 1.0]) for d in documents]
-
-    def query_embed(self, query: str, **_: Any) -> Iterable[Any]:
-        return iter([FakeArray([float(len(query)), 0.0])])
-
-
 class FakeBm25Model:
     def __init__(self, language: str) -> None:
         self.language = language
@@ -256,14 +235,6 @@ class FakeBm25Model:
 
 
 class TestEncoders:
-    async def test_dense_loads_once_and_converts(self) -> None:
-        FakeDenseModel.builds = 0
-        dense = FastembedDense(2, FakeDenseModel)
-        assert FakeDenseModel.builds == 0  # lazy
-        assert await dense.documents(["ab", "abc"]) == [[2.0, 1.0], [3.0, 1.0]]
-        assert await dense.query("abcd") == [4.0, 0.0]
-        assert (FakeDenseModel.builds, dense.dimension) == (1, 2)
-
     async def test_bm25_uses_a_stemmer_per_language(self) -> None:
         built: list[str] = []
 
@@ -275,10 +246,10 @@ class TestEncoders:
         [vector] = await sparse.documents(["texto"], "pt")
         assert (vector.indices, vector.values) == ((1, 2), (0.5, 1.5))
         assert (await sparse.query("text", "en")).indices == (7,)
-        assert built == ["portuguese", "english"]
+        await sparse.query("texto", "pt")
+        assert built == ["portuguese", "english"]  # one model per language, built once
 
-    def test_factories_do_not_load_models(self) -> None:
-        assert FastembedDense.create("some/model", 384, None).dimension == 384
+    def test_factory_does_not_load_models(self) -> None:
         FastembedBm25.create(None)
 
 
