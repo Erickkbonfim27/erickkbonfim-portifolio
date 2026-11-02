@@ -5,6 +5,7 @@ import asyncio
 import getpass
 import logging
 import sys
+from pathlib import Path
 
 from portfolio.bootstrap import (
     Container,
@@ -13,6 +14,7 @@ from portfolio.bootstrap import (
     close_infrastructure,
     search_use_cases,
 )
+from portfolio.contexts.content.interfaces import seed as content_seed
 from portfolio.contexts.identity.interfaces import cli as identity_cli
 from portfolio.platform.settings import Settings
 
@@ -22,6 +24,13 @@ async def _create_admin(container: Container) -> int:
         return await identity_cli.create_admin(
             container.identity.create_admin, ask=input, ask_secret=getpass.getpass, say=print
         )
+    finally:
+        await container.close()
+
+
+async def _seed(container: Container, paths: list[Path]) -> int:
+    try:
+        return await content_seed.seed(container.content, paths, say=print)
     finally:
         await container.close()
 
@@ -53,10 +62,15 @@ def main(argv: list[str] | None = None, container: Container | None = None) -> i
     commands.add_parser("worker", help="outbox relay, message consumers and daily jobs")
     commands.add_parser("setup-storage", help="create the bucket and its public-read policy")
     commands.add_parser("reindex", help="rebuild the search index from published content")
-    command = parser.parse_args(argv).command
+    seed = commands.add_parser("seed", help="create, update and publish content from TOML files")
+    seed.add_argument("paths", nargs="+", type=Path, help="TOML files or directories of them")
+    args = parser.parse_args(argv)
+    command = args.command
 
     if command == "create-admin":
         return asyncio.run(_create_admin(container or build_container(Settings())))
+    if command == "seed":
+        return asyncio.run(_seed(container or build_container(Settings()), args.paths))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     if command == "setup-storage":
         return asyncio.run(_setup_storage(Settings()))

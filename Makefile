@@ -7,7 +7,7 @@ ENV_FILE := $(if $(wildcard .env),--env-file ../.env,)
 RUN := cd $(BACKEND) && uv run $(ENV_FILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev-api dev-worker dev-web build-web check-web migrate migration create-admin setup-storage reindex test test-unit cov lint format typecheck imports runtime check
+.PHONY: help install dev-api dev-worker dev-web build-web check-web migrate migration create-admin setup-storage reindex seed test test-unit cov lint format typecheck imports runtime check
 
 help: ## List the commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -43,6 +43,9 @@ create-admin: ## Create the admin account (prompts for email and password)
 
 setup-storage: ## Create the bucket with public-read, no-listing policy
 	$(RUN) portfolio setup-storage
+
+seed: ## Create, update and publish content from TOML files (SEED=documentos/seed)
+	$(RUN) portfolio seed $(abspath $(or $(SEED),documentos/seed))
 
 reindex: ## Rebuild the search index (Qdrant) from published content
 	$(RUN) portfolio reindex
