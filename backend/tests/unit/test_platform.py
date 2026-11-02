@@ -80,6 +80,7 @@ async def test_container_wiring_does_not_connect() -> None:
     assert infra.storage.public_url("a.pdf") == "https://files.test/a.pdf"
     search = search_use_cases(infra)
     assert search.search.index is infra.index
+    assert infra.qdrant._client.rest_uri == "http://qdrant.test:6333"  # type: ignore[attr-defined]
     assert isinstance(search.index_entry.catalog._feed.uow(), SqlContentUnitOfWork)  # type: ignore[attr-defined]
     await container.close()
     await close_infrastructure(build_infrastructure(settings))
@@ -136,3 +137,9 @@ async def test_engine_uses_asyncpg_for_a_panel_url() -> None:
     engine = create_engine("postgres://u:p@db:5432/app")
     assert engine.url.drivername == "postgresql+asyncpg"
     await engine.dispose()
+
+
+async def test_a_qdrant_url_without_port_uses_the_scheme_default() -> None:
+    infra = build_infrastructure(settings_for_tests(qdrant_url="https://qdrant.example.dev"))
+    assert infra.qdrant._client.rest_uri == "https://qdrant.example.dev"  # type: ignore[attr-defined]
+    await close_infrastructure(infra)

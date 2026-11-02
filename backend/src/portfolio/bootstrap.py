@@ -95,8 +95,13 @@ def build_infrastructure(settings: Settings) -> Infrastructure:
     )
     # No version handshake at construction: it is a network call that would stall
     # startup whenever Qdrant is down. Client and server versions are pinned instead.
+    # port=None: the URL means what it says. Otherwise the client adds :6333 to a URL
+    # without a port, and https://qdrant.example.dev times out instead of using 443.
     qdrant = AsyncQdrantClient(
-        url=settings.qdrant_url, api_key=settings.qdrant_api_key, check_compatibility=False
+        url=settings.qdrant_url,
+        port=None,
+        api_key=settings.qdrant_api_key,
+        check_compatibility=False,
     )
     return Infrastructure(
         settings=settings,
