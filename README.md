@@ -80,7 +80,7 @@ Easypanel builds each app with Nixpacks, one service per app on the same VPS:
 | Service | Build path | Notes |
 |---|---|---|
 | API | `/backend` | `backend/nixpacks.toml` |
-| Worker | `/backend` | same build, `NIXPACKS_START_CMD=.venv/bin/portfolio worker` |
+| Worker | `/backend` | same build, runtime env `PORTFOLIO_ROLE=worker` (see `backend/start.sh`) |
 | Site | `/frontend` | `frontend/nixpacks.toml`, served by Caddy. Build env `VITE_API_URL`; runtime env `API_ORIGIN`, `FILES_ORIGIN` |
 
 `CORS_ORIGINS` on the API must include the site's origin.

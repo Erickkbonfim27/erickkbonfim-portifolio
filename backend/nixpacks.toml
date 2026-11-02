@@ -1,26 +1,28 @@
 # Easypanel builds the API with Nixpacks. Set the service's build path to /backend.
 # Migrations are not run here on purpose: they are applied by hand (`make migrate`).
 #
-# The worker is a second Easypanel service from the same repository and build path,
-# with one extra environment variable that replaces the start command below:
-#   NIXPACKS_START_CMD=.venv/bin/portfolio worker
+# Nixpacks writes [variables] into the Dockerfile as `ARG X` + `ENV X=$X` and
+# expects `--build-arg` for each one. Easypanel builds that Dockerfile without
+# them, so every variable arrives empty. Only plan-time settings belong in
+# [variables]; whatever a command needs is set inline in that command.
 
 providers = ["python"]
 
 [variables]
+# Read when Nixpacks plans the build, to pick the Python from Nix.
 NIXPACKS_PYTHON_VERSION = "3.13"
-# Use the Python from Nix instead of letting uv download its own.
-UV_PYTHON_DOWNLOADS = "never"
-UV_COMPILE_BYTECODE = "1"
 
 [phases.setup]
 nixPkgs = ["...", "uv"]
 
 [phases.install]
 # --frozen: install exactly what uv.lock says, fail if it is out of date.
-cmds = ["uv sync --frozen --no-dev --no-editable"]
+# UV_PROJECT_ENVIRONMENT is set because the Python provider points it at
+# /opt/venv, and start.sh expects /app/.venv.
+cmds = [
+  "UV_PROJECT_ENVIRONMENT=/app/.venv UV_COMPILE_BYTECODE=1 uv sync --frozen --no-dev --no-editable",
+]
 
 [start]
-# Behind Easypanel's proxy: trust X-Forwarded-* so request.client is the real IP
-# (the rate limiter depends on it).
-cmd = ".venv/bin/uvicorn portfolio.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"
+# The API by default, the worker with PORTFOLIO_ROLE=worker (see start.sh).
+cmd = "sh start.sh"
