@@ -1,4 +1,4 @@
-// A minimal history router: two real routes (home, case study) do not need a library.
+// A minimal history router: a handful of routes (home, case study, MCP) do not need a library.
 
 import { useSyncExternalStore } from "react";
 
@@ -24,11 +24,12 @@ export function usePathname(): string {
   return useSyncExternalStore(subscribe, () => window.location.pathname);
 }
 
-export type Route = { name: "home" } | { name: "case"; slug: string } | { name: "not-found" };
+export type Route = { name: "home" } | { name: "case"; slug: string } | { name: "mcp" } | { name: "not-found" };
 
 export function matchRoute(pathname: string): Route {
   const path = pathname.replace(/\/+$/, "") || "/";
   if (path === "/") return { name: "home" };
+  if (path === "/mcp") return { name: "mcp" };
   const match = /^\/work\/([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(path);
   if (match?.[1]) return { name: "case", slug: match[1] };
   return { name: "not-found" };

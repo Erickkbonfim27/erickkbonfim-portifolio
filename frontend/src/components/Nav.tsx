@@ -1,5 +1,6 @@
 import { useState, type AnchorHTMLAttributes } from "react";
 import type { Attachment } from "../api/types";
+import { usePathname } from "../lib/router";
 import { Link } from "./Link";
 import { ArrowUpRight, Mark } from "./Icons";
 
@@ -19,43 +20,44 @@ const SECTIONS = [
   { id: "stack", label: "Stack", n: "04" },
 ];
 
+export const MCP_PATH = "/mcp";
+
 interface NavProps {
   /** "" on the home page (plain #hash anchors), "/" elsewhere (back to home). */
   base: Base;
   cv: Attachment | null;
 }
 
+// Layout lives in classes (app.css), never in inline styles: an inline `display`
+// beats the container queries that hide the desktop links on small screens.
 export function Nav({ base, cv }: NavProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const onMcp = usePathname().replace(/\/+$/, "") === MCP_PATH;
+  const current = onMcp ? "page" : undefined;
 
   return (
     <div className="navwrap">
       <div className="wrap">
         <header className="navbar">
-          <SectionAnchor
-            base={base} id="top"
-            aria-label="Erick Kopak Bonfim, back to top"
-            style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 44, minWidth: 0 }}
-          >
+          <SectionAnchor className="nav-home" base={base} id="top" aria-label="Erick Kopak Bonfim, back to top">
             <Mark />
-            <span className="nav-name" style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, minWidth: 0 }}>
-              <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
-                Erick Kopak Bonfim
-              </span>
-              <small className="mono" style={{ fontSize: 10.5, color: "#5F6670", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
-                AI · SOFTWARE ENGINEER
-              </small>
+            <span className="nav-name">
+              <span className="nav-name-title">Erick Kopak Bonfim</span>
+              <small className="mono nav-name-sub">AI · SOFTWARE ENGINEER</small>
             </span>
           </SectionAnchor>
-          <nav className="navlinks" aria-label="Primary" style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <nav className="navlinks" aria-label="Primary">
             {SECTIONS.map((s) => (
               <SectionAnchor key={s.id} className="navlink" base={base} id={s.id}>
                 {s.label}
               </SectionAnchor>
             ))}
+            <Link className="navlink nav-mcp" to={MCP_PATH} aria-current={current}>
+              MCP
+            </Link>
           </nav>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="nav-actions">
             {cv && (
               <a className="pillbtn pill-line sm nav-cv" href={cv.url} download={cv.filename}>
                 Download CV
@@ -94,31 +96,22 @@ export function Nav({ base, cv }: NavProps) {
             {SECTIONS.map((s) => (
               <SectionAnchor key={s.id} className="mlink" base={base} id={s.id} onClick={close}>
                 {s.label}
-                <span className="mono" style={{ fontSize: 12, color: "#5F6670" }}>
-                  {s.n}
-                </span>
+                <span className="mono mlink-n">{s.n}</span>
               </SectionAnchor>
             ))}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "10px 10px 6px" }}>
-              <SectionAnchor
-                className="pillbtn pill-dark"
-                base={base} id="contact"
-                onClick={close}
-                style={{ flex: "1 1 auto", justifyContent: "space-between" }}
-              >
+            <Link className="mlink" to={MCP_PATH} aria-current={current} onClick={close}>
+              MCP server
+              <span className="mono mlink-n">05</span>
+            </Link>
+            <div className="mmenu-actions">
+              <SectionAnchor className="pillbtn pill-dark" base={base} id="contact" onClick={close}>
                 Contact
                 <span className="ab">
                   <ArrowUpRight />
                 </span>
               </SectionAnchor>
               {cv && (
-                <a
-                  className="pillbtn pill-line"
-                  href={cv.url}
-                  download={cv.filename}
-                  onClick={close}
-                  style={{ flex: "1 1 auto", justifyContent: "center" }}
-                >
+                <a className="pillbtn pill-line" href={cv.url} download={cv.filename} onClick={close}>
                   Download CV
                 </a>
               )}

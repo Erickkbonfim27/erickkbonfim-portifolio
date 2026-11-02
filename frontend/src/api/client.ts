@@ -24,6 +24,11 @@ export function apiBase(raw: string | undefined = import.meta.env.VITE_API_URL):
   return (raw ?? "").trim().replace(/\/+$/, "");
 }
 
+/** Where the MCP server lives: next to the API (same origin when no API URL is configured). */
+export function mcpUrl(base: string = apiBase()): string {
+  return `${base || window.location.origin}/mcp`;
+}
+
 interface RequestOptions {
   signal?: AbortSignal;
   timeoutMs?: number;

@@ -5,8 +5,15 @@ import { json, mockFetch } from "./helpers";
 describe("apiBase", () => {
   it("trims whitespace and trailing slashes; empty means same origin", () => {
     expect(apiBase(" https://api.erick.dev/// ")).toBe("https://api.erick.dev");
-    expect(apiBase(undefined)).toBe("");
     expect(apiBase("")).toBe("");
+  });
+
+  it("reads VITE_API_URL by default, whatever a local .env says", () => {
+    vi.stubEnv("VITE_API_URL", "");
+    expect(apiBase()).toBe("");
+    vi.stubEnv("VITE_API_URL", "https://api.erick.dev/");
+    expect(apiBase()).toBe("https://api.erick.dev");
+    vi.unstubAllEnvs();
   });
 });
 
