@@ -92,8 +92,6 @@ export function Work({ entries }: { entries: WorkEntries }) {
             <p className="wbody">{vizzion.summary}</p>
             <ul className="ticks">
               <li>Land-use analysis based on space syntax, with 70+ indicators per site</li>
-              <li>Wrote two municipal master plans; one won a national award</li>
-              <li>Found a zoning clause that saved a housing development over R$75M in taxes</li>
             </ul>
           </article>
 
