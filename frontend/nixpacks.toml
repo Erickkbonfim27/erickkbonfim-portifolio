@@ -1,0 +1,25 @@
+# Easypanel builds the site with Nixpacks. Set the service's build path to /frontend.
+#
+# Build-time variable (baked into the bundle by Vite):
+#   VITE_API_URL   e.g. https://api.yourdomain.dev
+# Runtime variables (read by Caddy, see Caddyfile):
+#   API_ORIGIN, FILES_ORIGIN   (PORT is set by Easypanel)
+
+providers = ["node"]
+
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+NODE_ENV = "production"
+
+[phases.setup]
+nixPkgs = ["...", "caddy"]
+
+[phases.install]
+# Dev dependencies are needed to build (Vite, TypeScript), so include them.
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "caddy run --config Caddyfile --adapter caddyfile"

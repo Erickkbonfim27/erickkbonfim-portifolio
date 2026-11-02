@@ -1,0 +1,75 @@
+/* Additions to the handoff CSS, built only from its tokens (--ink, --line, --accent…).
+   handoff.css stays a verbatim port; anything new or overridden lives here. */
+
+/* Self-hosted Sora ships as "Sora Variable"; the handoff names it "Sora". */
+.ekb {
+  font-family: "Sora Variable", "Sora", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* The data platform card lost its unverifiable third metric. */
+.ekb .metrics.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ---- contact form (inside the dark contact card) ---- */
+.ekb .cform { display: flex; flex-direction: column; gap: 16px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.12); }
+.ekb .cfields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ekb .cfield { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ekb .cfield.wide { grid-column: 1 / -1; }
+.ekb .clabel { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dfa); }
+.ekb .cfield input, .ekb .cfield textarea {
+  width: 100%; min-height: 48px; padding: 12px 16px; border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.04);
+  color: var(--dtx); font: inherit; font-size: 15px; line-height: 1.5;
+  transition: border-color .25s var(--ease), background .25s var(--ease);
+}
+.ekb .cfield textarea { resize: vertical; min-height: 112px; }
+.ekb .cfield input:hover, .ekb .cfield textarea:hover { border-color: rgba(255,255,255,.32); }
+.ekb .cfield input:focus-visible, .ekb .cfield textarea:focus-visible { outline: 2px solid var(--acc-hi); outline-offset: 2px; background: rgba(255,255,255,.07); }
+.ekb .cfield input:user-invalid, .ekb .cfield textarea:user-invalid { border-color: #F87171; }
+.ekb .cactions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.ekb .cactions button[disabled] { opacity: .7; cursor: progress; transform: none; }
+.ekb .cnote { font-size: 12px; color: var(--dmu); letter-spacing: .02em; }
+.ekb .cstatus { min-height: 1.5em; font-size: 15px; color: var(--okd); }
+.ekb .cstatus.err { color: #FCA5A5; }
+.ekb .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+/* ---- case study and 404 ---- */
+.ekb .case { display: flex; flex-direction: column; gap: 16px; padding-top: clamp(28px, 4cqi, 56px); }
+.ekb .case-head { display: flex; flex-direction: column; gap: 22px; padding: clamp(24px, 4cqi, 48px); }
+.ekb .case-title { font-size: clamp(40px, 4.2cqi, 64px); line-height: 1.04; letter-spacing: -.055em; font-weight: 600; text-wrap: balance; }
+.ekb .case-summary { max-width: 720px; font-size: clamp(16px, 1.3cqi, 19px); line-height: 1.65; color: var(--ink2); text-wrap: pretty; }
+.ekb .case-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.ekb .case-size { font-size: 12px; font-weight: 500; opacity: .7; }
+.ekb .case-skills { display: flex; flex-direction: column; gap: 14px; padding: 24px clamp(24px, 4cqi, 48px); }
+.ekb .case-loading { min-height: 240px; justify-content: center; }
+
+/* Server-rendered rich text (TipTap allow-list: p, h2–h4, lists, quote, code, table, img, hr). */
+.ekb .prose { padding: clamp(24px, 4cqi, 48px); max-width: 100%; font-size: 17px; line-height: 1.75; color: var(--ink2); overflow-wrap: anywhere; }
+.ekb .prose > * + * { margin-top: 1.1em; }
+.ekb .prose h2, .ekb .prose h3, .ekb .prose h4 { color: var(--ink); font-weight: 600; letter-spacing: -.035em; line-height: 1.2; margin-top: 1.8em; }
+.ekb .prose h2 { font-size: clamp(26px, 2.4cqi, 34px); }
+.ekb .prose h3 { font-size: 22px; }
+.ekb .prose h4 { font-size: 18px; }
+.ekb .prose ul, .ekb .prose ol { padding-left: 1.4em; }
+.ekb .prose ul { list-style: disc; }
+.ekb .prose ol { list-style: decimal; }
+.ekb .prose li + li { margin-top: .4em; }
+.ekb .prose li::marker { color: var(--accent); }
+.ekb .prose a { color: var(--accent); text-decoration: underline; text-underline-offset: .2em; }
+.ekb .prose strong { color: var(--ink); font-weight: 600; }
+.ekb .prose mark { background: var(--acc-soft); color: var(--ink); padding: 0 .15em; border-radius: 4px; }
+.ekb .prose blockquote { padding-left: 18px; border-left: 3px solid var(--accent); color: var(--ink); }
+.ekb .prose code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .88em; padding: .1em .35em; border-radius: 6px; background: #fff; border: 1px solid var(--line); }
+.ekb .prose pre { padding: 18px 20px; border-radius: 18px; background: var(--dk); color: var(--dtx); overflow-x: auto; }
+.ekb .prose pre code { padding: 0; border: 0; background: none; color: inherit; font-size: 14px; }
+.ekb .prose hr { border: 0; border-top: 1px solid var(--line); }
+.ekb .prose img { max-width: 100%; height: auto; border-radius: 18px; }
+.ekb .prose table { width: 100%; border-collapse: collapse; font-size: 15px; display: block; overflow-x: auto; }
+.ekb .prose th, .ekb .prose td { padding: 10px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.ekb .prose th { color: var(--ink); background: #fff; }
+.ekb .prose .ta-center { text-align: center; }
+.ekb .prose .ta-right { text-align: right; }
+.ekb .prose .ta-justify { text-align: justify; }
+
+@container page (max-width: 720px) {
+  .ekb .cfields { grid-template-columns: minmax(0, 1fr); }
+}

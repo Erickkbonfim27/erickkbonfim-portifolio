@@ -1,0 +1,53 @@
+from datetime import datetime, timedelta
+from types import TracebackType
+from typing import Any, Protocol, Self
+from uuid import UUID
+
+from portfolio.contexts.contacts.domain.model import ContactRequest, ContactStatus, OutgoingEmail
+
+
+class ContactRepository(Protocol):
+    async def get(self, contact_id: UUID) -> ContactRequest | None: ...
+    async def get_by_idempotency_key(self, key: str) -> ContactRequest | None: ...
+    async def list(self, status: ContactStatus | None) -> list[ContactRequest]: ...
+    async def add(self, request: ContactRequest) -> None: ...
+    async def save(self, request: ContactRequest) -> None: ...
+    async def delete(self, contact_id: UUID) -> None: ...
+    async def delete_created_before(self, cutoff: datetime) -> int: ...
+    async def thanked_since(self, email: str, since: datetime) -> bool:
+        """Whether any contact from this address got a thank-you at or after `since`."""
+        ...
+
+
+class ContactsUnitOfWork(Protocol):
+    @property
+    def contacts(self) -> ContactRepository: ...
+
+    def record(self, topic: str, payload: dict[str, Any]) -> None:
+        """An event committed with the transaction (outbox)."""
+        ...
+
+    async def __aenter__(self) -> Self: ...
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None: ...
+    async def commit(self) -> None:
+        """Raises DuplicateSubmissionError when the idempotency key is already taken."""
+        ...
+
+
+class RateLimiter(Protocol):
+    async def hit(self, bucket: str, key: str, limit: int, window: timedelta) -> bool:
+        """Count one hit; False once `limit` is exceeded in the current window."""
+        ...
+
+
+class Mailer(Protocol):
+    async def send(self, email: OutgoingEmail) -> None: ...
+
+
+class Clock(Protocol):
+    def now(self) -> datetime: ...

@@ -1,0 +1,79 @@
+from typing import Annotated, Literal
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Read from environment variables only. `make` loads `.env` for local runs;
+    Easypanel injects them in production. See `.env.example` at the repository root."""
+
+    model_config = SettingsConfigDict(extra="ignore")
+
+    app_env: Literal["local", "production", "test"] = "local"
+    database_url: str = Field(min_length=1)
+    # NoDecode: read "a,b" as a comma-separated string instead of a JSON list.
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
+
+    session_cookie_name: str = "ekb_session"
+    session_ttl_hours: int = Field(default=12, gt=0)
+    cookie_secure: bool = True
+    cookie_domain: str | None = None
+
+    # Object storage (MinIO, S3 API). The bucket is publicly readable, not listable.
+    s3_endpoint_url: str = Field(min_length=1)
+    s3_access_key: str = Field(min_length=1)
+    s3_secret_key: str = Field(min_length=1)
+    s3_bucket: str = Field(min_length=1)
+    s3_region: str = "us-east-1"
+    # Where browsers fetch files from, e.g. https://files.example.dev/portfolio
+    public_files_base_url: str = Field(min_length=1)
+
+    # Absolute URLs used in AGENTS.md, llms.txt and the JSON Resume, e.g.
+    # https://erick.dev and https://api.erick.dev
+    public_site_url: str = Field(min_length=1)
+    public_api_url: str = Field(min_length=1)
+
+    # Hybrid search
+    qdrant_url: str = Field(min_length=1)
+    qdrant_api_key: str | None = None
+    qdrant_collection: str = "portfolio"
+    dense_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    dense_dimension: int = Field(default=384, gt=0)
+    # Where fastembed keeps downloaded models; a persistent volume avoids re-downloading.
+    fastembed_cache_dir: str | None = None
+
+    # Rate limit keys are HMACs of the client IP; the raw IP is never stored.
+    ip_hash_secret: str = Field(min_length=32)
+
+    # Only the worker needs these; the API starts without them.
+    rabbitmq_url: str | None = None
+    resend_api_key: str | None = None
+    mail_from: str | None = None
+    owner_email: str | None = None
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, raw: object) -> object:
+        if isinstance(raw, str):
+            return [origin.strip() for origin in raw.split(",") if origin.strip()]
+        return raw
+
+    @field_validator(
+        "cookie_domain",
+        "rabbitmq_url",
+        "resend_api_key",
+        "mail_from",
+        "owner_email",
+        "qdrant_api_key",
+        "fastembed_cache_dir",
+        mode="before",
+    )
+    @classmethod
+    def _empty_is_none(cls, raw: object) -> object:
+        return None if raw == "" else raw
+
+    @field_validator("public_files_base_url", "public_site_url", "public_api_url", mode="after")
+    @classmethod
+    def _no_trailing_slash(cls, url: str) -> str:
+        return url.rstrip("/")

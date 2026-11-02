@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#08090B"/>
+  <rect x="40" y="40" width="1120" height="550" rx="36" fill="#E7E9EC"/>
+  <circle cx="160" cy="170" r="64" fill="#0D0F12"/>
+  <text x="146" y="184" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" font-size="40" font-weight="600" fill="#ffffff">ek</text>
+  <rect x="190" y="152" width="13" height="34" fill="#8C9CFF"/>
+  <text x="96" y="330" font-family="Sora, ui-sans-serif, system-ui, sans-serif" font-size="72" font-weight="600" letter-spacing="-3.5" fill="#0D0F12">I used to sell apartments.</text>
+  <text x="96" y="420" font-family="Sora, ui-sans-serif, system-ui, sans-serif" font-size="72" font-weight="600" letter-spacing="-3.5" fill="#0D0F12">Now I build <tspan fill="#2E4BFF">AI agents.</tspan></text>
+  <text x="96" y="520" font-family="JetBrains Mono, ui-monospace, monospace" font-size="24" letter-spacing="2" fill="#5F6670">ERICK KOPAK BONFIM · AI · SOFTWARE ENGINEER</text>
+</svg>
