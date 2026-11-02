@@ -68,7 +68,7 @@ typecheck: ## mypy --strict
 imports: ## Architecture boundaries (import-linter)
 	cd $(BACKEND) && uv run lint-imports
 
-runtime: ## Import every entrypoint with production dependencies only, as the deploy does
-	cd $(BACKEND) && uv run --isolated --no-dev python -c "import portfolio.main, portfolio.worker, portfolio.cli"
+runtime: ## Build the app with production dependencies only, as the deploy does
+	cd $(BACKEND) && uv run --isolated --no-dev python tests/deploy_smoke.py
 
 check: lint typecheck imports runtime cov check-web ## Everything that must pass before a push

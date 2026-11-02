@@ -1,4 +1,5 @@
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -75,6 +76,18 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_is_none(cls, raw: object) -> object:
         return None if raw == "" else raw
+
+    @field_validator("s3_endpoint_url", mode="after")
+    @classmethod
+    def _s3_host_without_underscore(cls, url: str) -> str:
+        # botocore refuses such hosts when the client is built, so the API would not
+        # start. Easypanel's internal names (project_service) have one.
+        if "_" in (urlsplit(url).hostname or ""):
+            raise ValueError(
+                "S3_ENDPOINT_URL: the S3 client rejects hostnames with '_' (Easypanel's "
+                "internal names); use the storage's public domain instead"
+            )
+        return url
 
     @field_validator("public_files_base_url", "public_site_url", "public_api_url", mode="after")
     @classmethod

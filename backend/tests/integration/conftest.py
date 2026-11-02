@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine as raw_engine
 
-from portfolio.platform.db import create_engine
+from portfolio.platform.db import asyncpg_url, create_engine
 
 BACKEND = Path(__file__).resolve().parents[2]
 
@@ -36,6 +36,7 @@ async def database_url() -> AsyncIterator[str]:
     admin_url = os.environ.get("TEST_DATABASE_ADMIN_URL")
     if not admin_url:
         pytest.skip("TEST_DATABASE_ADMIN_URL is not set")
+    admin_url = asyncpg_url(admin_url)
     name = f"portfolio_test_{uuid4().hex[:12]}"
     # CREATE/DROP DATABASE cannot run inside a transaction.
     admin = raw_engine(admin_url, isolation_level="AUTOCOMMIT")

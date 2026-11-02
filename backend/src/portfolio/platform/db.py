@@ -21,9 +21,20 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
+def asyncpg_url(database_url: str) -> str:
+    """Accept the URL as hosting panels hand it out (postgres://, postgresql://)
+    and point it at the asyncpg driver. An explicit driver is left as given."""
+    scheme, separator, rest = database_url.partition("://")
+    if separator and scheme in {"postgres", "postgresql"}:
+        return f"postgresql+asyncpg://{rest}"
+    return database_url
+
+
 def create_engine(database_url: str) -> AsyncEngine:
     # Small pool: one VPS, low traffic. pre_ping survives the database restarting.
-    return create_async_engine(database_url, pool_size=5, max_overflow=5, pool_pre_ping=True)
+    return create_async_engine(
+        asyncpg_url(database_url), pool_size=5, max_overflow=5, pool_pre_ping=True
+    )
 
 
 def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

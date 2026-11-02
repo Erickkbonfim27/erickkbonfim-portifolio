@@ -13,7 +13,7 @@ from portfolio.contexts.files.infrastructure.persistence import SqlFilesUnitOfWo
 from portfolio.contexts.identity.infrastructure.persistence import SqlIdentityUnitOfWork
 from portfolio.main import create_app
 from portfolio.platform.clock import SystemClock
-from portfolio.platform.db import Base
+from portfolio.platform.db import Base, asyncpg_url, create_engine
 from portfolio.platform.models import load_all_models
 from portfolio.platform.settings import Settings
 from tests.unit.support import REQUIRED_SETTINGS, settings_for_tests
@@ -47,6 +47,11 @@ def test_required_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
     with pytest.raises(ValueError, match="database_url"):
         Settings()
+
+
+def test_s3_endpoint_cannot_use_an_internal_easypanel_name() -> None:
+    with pytest.raises(ValueError, match="public domain"):
+        settings_for_tests(s3_endpoint_url="http://portifolio_rustfs:9000")
 
 
 def test_ip_hash_secret_must_be_long() -> None:
@@ -99,3 +104,23 @@ def test_every_model_is_registered() -> None:
 
 def test_system_clock_is_timezone_aware() -> None:
     assert SystemClock().now().tzinfo is not None
+
+
+@pytest.mark.parametrize(
+    ("given", "expected"),
+    [
+        ("postgres://u:p@db:5432/app", "postgresql+asyncpg://u:p@db:5432/app"),
+        ("postgresql://u:p@db:5432/app", "postgresql+asyncpg://u:p@db:5432/app"),
+        ("postgresql+asyncpg://u:p@db/app", "postgresql+asyncpg://u:p@db/app"),
+        ("sqlite://", "sqlite://"),
+        ("not a url", "not a url"),
+    ],
+)
+def test_database_urls_from_hosting_panels(given: str, expected: str) -> None:
+    assert asyncpg_url(given) == expected
+
+
+async def test_engine_uses_asyncpg_for_a_panel_url() -> None:
+    engine = create_engine("postgres://u:p@db:5432/app")
+    assert engine.url.drivername == "postgresql+asyncpg"
+    await engine.dispose()
