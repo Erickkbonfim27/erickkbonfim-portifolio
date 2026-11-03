@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { Attachment } from "../api/types";
 import { EMAIL, GITHUB, LINKEDIN } from "../content/fallback";
+import { useI18n } from "../i18n";
 import { ContactForm } from "./ContactForm";
 import { ArrowUpRight } from "./Icons";
 
-const LANGUAGES = ["PT · native", "EN · full professional", "IT · elementary", "RU · limited working"];
-
 export function Contact({ cv }: { cv: Attachment | null }) {
+  const { t } = useI18n();
+  const c = t.contact;
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -34,7 +35,7 @@ export function Contact({ cv }: { cv: Attachment | null }) {
             <span className="n" style={{ background: "#fff", color: "#0D0F12" }}>
               06
             </span>
-            Contact
+            {c.eyebrow}
           </h2>
           <p className="hxl" style={{ fontSize: "clamp(20px, 4.8cqi, 68px)" }}>
             <a className="mailbig" href={`mailto:${EMAIL}`}>
@@ -47,10 +48,7 @@ export function Contact({ cv }: { cv: Attachment | null }) {
               </span>
             </a>
           </p>
-          <p style={{ maxWidth: 620, fontSize: "clamp(16px, 1.3cqi, 18px)", lineHeight: 1.7, color: "#A3AAB5" }}>
-            I'm looking for AI Engineer or LLM Engineer roles, remote or in São Paulo. If you're building with agents,
-            I'd like to hear about it.
-          </p>
+          <p style={{ maxWidth: 620, fontSize: "clamp(16px, 1.3cqi, 18px)", lineHeight: 1.7, color: "#A3AAB5" }}>{c.pitch}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             <a className="pillbtn pill-light" href={LINKEDIN}>
               LinkedIn
@@ -63,14 +61,14 @@ export function Contact({ cv }: { cv: Attachment | null }) {
             </a>
             {cv && (
               <a id="cv" className="pillbtn pill-ghost" href={cv.url} download={cv.filename}>
-                Download CV
+                {c.cv}
               </a>
             )}
           </div>
           <ContactForm />
           <div className="emailrow">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, flex: "1 1 auto" }}>
-              {LANGUAGES.map((lang) => (
+              {c.languages.map((lang) => (
                 <span key={lang} className="tag mono" style={{ fontSize: 12 }}>
                   {lang}
                 </span>
@@ -81,10 +79,10 @@ export function Contact({ cv }: { cv: Attachment | null }) {
                 <rect x="9" y="9" width="11" height="11" rx="2.5" />
                 <path d="M5 15V6a2 2 0 0 1 2-2h8" />
               </svg>
-              {copied ? <span style={{ color: "#5BE3A0" }}>Copied</span> : <span>Copy email</span>}
+              {copied ? <span style={{ color: "#5BE3A0" }}>{c.copied}</span> : <span>{c.copy}</span>}
             </button>
             <span className="sr" aria-live="polite">
-              {copied ? "Email copied to clipboard" : ""}
+              {copied ? c.copiedSr : ""}
             </span>
           </div>
         </div>

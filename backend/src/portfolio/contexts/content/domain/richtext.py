@@ -12,6 +12,7 @@ from html import escape
 from typing import Any
 from urllib.parse import urlparse
 
+from portfolio.contexts.content.domain import blocks
 from portfolio.contexts.content.domain.errors import InvalidRichTextError
 
 MAX_NODES = 5000
@@ -36,6 +37,9 @@ class RenderOptions:
 
     image_base_url: str
 
+    def own(self, src: str) -> bool:
+        return src.startswith(f"{self.image_base_url}/")
+
 
 # --- validation ---------------------------------------------------------------
 
@@ -56,7 +60,9 @@ _INLINE = frozenset({"text", "hardBreak"})
 
 # node type -> (allowed child types or None for leaf, allowed attribute names)
 _NODES: dict[str, tuple[frozenset[str] | None, frozenset[str]]] = {
-    "doc": (_BLOCK_CHILDREN, frozenset()),
+    # Structured blocks (domain/blocks.py) only at the top level of a document.
+    "doc": (_BLOCK_CHILDREN | {"block"}, frozenset()),
+    "block": (None, frozenset({"kind", "data", "hidden"})),
     "paragraph": (_INLINE, frozenset({"textAlign"})),
     "heading": (_INLINE, frozenset({"level", "textAlign"})),
     "bulletList": (frozenset({"listItem"}), frozenset()),
@@ -92,10 +98,14 @@ def _fail(path: str, reason: str) -> InvalidRichTextError:
 
 
 def safe_link(href: object) -> str | None:
+    """http(s) and mailto links, or a path on this site ("/work/vizzion")."""
     if not isinstance(href, str) or len(href) > MAX_URL:
         return None
-    scheme = urlparse(href.strip()).scheme.lower()
-    return href.strip() if scheme in LINK_SCHEMES else None
+    href = href.strip()
+    if href.startswith("/") and not href.startswith("//"):
+        return href
+    scheme = urlparse(href).scheme.lower()
+    return href if scheme in LINK_SCHEMES else None
 
 
 def _attrs(node: Node, allowed: frozenset[str], path: str) -> Mapping[str, Any]:
@@ -129,6 +139,8 @@ def _check_attrs(kind: str, attrs: Mapping[str, Any], path: str) -> None:
         language = attrs["language"]
         if not isinstance(language, str) or not set(language) <= CODE_LANGUAGE_CHARS:
             raise _fail(path, "invalid code language")
+    if kind == "block":
+        blocks.validate_block(attrs, path)
     if kind == "image" and not isinstance(attrs.get("src"), str):
         raise _fail(path, "image needs a src")
     for span in ("colspan", "rowspan"):
@@ -216,7 +228,7 @@ def _wrap_marks(html: str, marks: list[Mapping[str, Any]]) -> str:
         kind = mark["type"]
         if kind == "link":
             href = safe_link((mark.get("attrs") or {}).get("href")) or "#"
-            external = not href.startswith("mailto:")
+            external = not href.startswith(("mailto:", "/"))
             extra = ' target="_blank" rel="noopener noreferrer nofollow"' if external else ""
             html = f'<a href="{escape(href)}"{extra}>{html}</a>'
         else:
@@ -246,10 +258,17 @@ def render_html(doc: Mapping[str, Any], options: RenderOptions) -> str:
     def image(node: Node) -> str:
         attrs = node.get("attrs") or {}
         src = str(attrs.get("src", ""))
-        if not src.startswith(f"{options.image_base_url}/"):
+        if not options.own(src):
             return ""  # a foreign image is dropped instead of hot-linked
         alt = escape(str(attrs.get("alt") or ""))
         return f'<img src="{escape(src)}" alt="{alt}" loading="lazy">'
+
+    def block(node: Node) -> str:
+        attrs = node["attrs"]
+        data = blocks.public_data(attrs["kind"], attrs["data"], options.own)
+        if not blocks.is_visible(attrs) or data is None:
+            return ""
+        return blocks.block_html(attrs["kind"], data)
 
     def ordered(node: Node) -> str:
         start = (node.get("attrs") or {}).get("start")
@@ -275,6 +294,7 @@ def render_html(doc: Mapping[str, Any], options: RenderOptions) -> str:
         "codeBlock": code_block,
         "horizontalRule": lambda _: "<hr>",
         "image": image,
+        "block": block,
         "table": lambda n: f"<table><tbody>{children(n)}</tbody></table>",
         "tableRow": lambda n: f"<tr>{children(n)}</tr>",
         "tableHeader": cell("th"),
@@ -289,12 +309,19 @@ def render_html(doc: Mapping[str, Any], options: RenderOptions) -> str:
     return render(doc)
 
 
-def plain_text(doc: Mapping[str, Any]) -> str:
-    """Text content with block boundaries as newlines (search, previews, emptiness checks)."""
+def plain_text(doc: Mapping[str, Any], *, notes: bool = False) -> str:
+    """Text content with block boundaries as newlines (search, previews, emptiness checks).
+
+    Notes are left out unless asked for: only the search index reads them."""
     parts: list[str] = []
 
     def walk(node: Node) -> None:
         kind = node.get("type")
+        if kind == "block":
+            attrs = node["attrs"]
+            if blocks.is_visible(attrs) and (notes or attrs["kind"] != "note"):
+                parts.append(blocks.block_text(attrs["kind"], attrs["data"]) + "\n")
+            return
         if kind == "text":
             parts.append(str(node.get("text", "")))
         elif kind == "hardBreak":
@@ -328,9 +355,38 @@ def sections(doc: Mapping[str, Any]) -> list[Section]:
                 found.append(Section(heading, "\n".join(blocks)))
             heading, blocks = plain_text(node), []
             continue
-        text = plain_text({"type": "doc", "content": [node]})
+        text = plain_text({"type": "doc", "content": [node]}, notes=True)
         if text:
             blocks.append(text)
     if blocks:
         found.append(Section(heading, "\n".join(blocks)))
     return found
+
+
+def segments(doc: Mapping[str, Any], options: RenderOptions) -> list[dict[str, Any]]:
+    """The document for the site: runs of HTML between structured blocks.
+
+    `{"type": "html", "html": …}` and `{"type": "block", "kind": …, "data": …}`, in
+    order. Hidden blocks, and blocks left empty without foreign images, are skipped.
+    """
+    out: list[dict[str, Any]] = []
+    run: list[Node] = []
+
+    def flush() -> None:
+        if run:
+            html = render_html({"type": "doc", "content": list(run)}, options)
+            if html:
+                out.append({"type": "html", "html": html})
+            run.clear()
+
+    for node in doc.get("content", []):
+        if node.get("type") != "block":
+            run.append(node)
+            continue
+        flush()
+        attrs = node["attrs"]
+        data = blocks.public_data(attrs["kind"], attrs["data"], options.own)
+        if blocks.is_visible(attrs) and data is not None:
+            out.append({"type": "block", "kind": attrs["kind"], "data": data})
+    flush()
+    return out

@@ -8,7 +8,11 @@ from uuid import uuid4
 from qdrant_client import AsyncQdrantClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from portfolio.bridges import ContentSourceCatalog, FilesAttachmentCatalog
+from portfolio.bridges import ContentSourceCatalog, FilesAttachmentCatalog, SiteKnowledge
+from portfolio.contexts.assistant.application.agent import Agent
+from portfolio.contexts.assistant.infrastructure.openrouter import OpenRouterChat
+from portfolio.contexts.assistant.infrastructure.tracing import LangfuseAgentTracer
+from portfolio.contexts.assistant.interfaces.http import Assistant, DailySpend
 from portfolio.contexts.contacts.application.use_cases import (
     ContactsUseCases,
     DeleteContact,
@@ -39,6 +43,7 @@ from portfolio.contexts.files.application.use_cases import (
     ListFiles,
     UploadFile,
 )
+from portfolio.contexts.files.infrastructure.images import PillowImages
 from portfolio.contexts.files.infrastructure.persistence import SqlFilesUnitOfWork
 from portfolio.contexts.files.infrastructure.storage import S3Storage, create_s3_client
 from portfolio.contexts.identity.application.use_cases import (
@@ -64,8 +69,10 @@ from portfolio.contexts.search.application.use_cases import (
 from portfolio.contexts.search.infrastructure.encoders import FastembedBm25
 from portfolio.contexts.search.infrastructure.openrouter import OpenRouterDense
 from portfolio.contexts.search.infrastructure.qdrant_index import QdrantIndex
+from portfolio.contexts.search.infrastructure.tracing import LangfuseSearchTracer
 from portfolio.platform.clock import SystemClock
 from portfolio.platform.db import create_engine, create_session_factory
+from portfolio.platform.langfuse import Langfuse
 from portfolio.platform.ratelimit import PostgresRateLimiter
 from portfolio.platform.settings import Settings
 
@@ -84,6 +91,8 @@ class Infrastructure:
     index: QdrantIndex
     dense: OpenRouterDense
     sparse: FastembedBm25
+    chat: OpenRouterChat
+    langfuse: Langfuse | None = None
 
 
 def build_infrastructure(settings: Settings) -> Infrastructure:
@@ -117,11 +126,28 @@ def build_infrastructure(settings: Settings) -> Infrastructure:
         ),
         # Loaded lazily on first use: an API that never searches never loads them.
         sparse=FastembedBm25.create(settings.fastembed_cache_dir),
+        chat=OpenRouterChat.create(
+            settings.openrouter_api_key,
+            {"fast": settings.chat_models, "strong": settings.chat_models_strong},
+        ),
+        langfuse=(
+            Langfuse.create(
+                settings.langfuse_host,
+                settings.langfuse_public_key,
+                settings.langfuse_secret_key,
+                settings.langfuse_environment,
+            )
+            if settings.langfuse_public_key and settings.langfuse_secret_key
+            else None
+        ),
     )
 
 
 async def close_infrastructure(infra: Infrastructure) -> None:
+    if infra.langfuse is not None:
+        await infra.langfuse.close()
     await infra.dense.close()
+    await infra.chat.close()
     await infra.qdrant.close()
     await infra.engine.dispose()
 
@@ -134,7 +160,12 @@ def search_use_cases(infra: Infrastructure) -> SearchUseCases:
     return SearchUseCases(
         index_entry=IndexEntry(feed, write),
         reindex=Reindex(feed, write),
-        search=Search(infra.dense, infra.sparse, infra.index),
+        search=Search(
+            infra.dense,
+            infra.sparse,
+            infra.index,
+            tracer=LangfuseSearchTracer(infra.langfuse) if infra.langfuse else None,
+        ),
     )
 
 
@@ -148,6 +179,7 @@ class Container:
     content: ContentUseCases
     catalog: PublicCatalog
     search: Search
+    assistant: Assistant
     files: FilesUseCases
     contacts: ContactsUseCases
     auth_cookie: AuthCookie
@@ -170,6 +202,12 @@ def build_container(settings: Settings, infra: Infrastructure | None = None) -> 
     hasher = Argon2PasswordHasher()
     contacts = contacts_uow(infra)
     describe_files = DescribeFiles(files_uow, infra.storage)
+    catalog = PublicCatalog(
+        uow=content_uow,
+        files=FilesAttachmentCatalog(describe_files),
+        render=RenderOptions(image_base_url=settings.public_files_base_url),
+    )
+    search = search_use_cases(infra).search
     return Container(
         identity=IdentityUseCases(
             create_admin=CreateAdmin(uow=identity_uow, hasher=hasher, clock=clock),
@@ -193,14 +231,19 @@ def build_container(settings: Settings, infra: Infrastructure | None = None) -> 
             get=GetEntry(content_uow),
             list=ListEntries(content_uow),
         ),
-        catalog=PublicCatalog(
-            uow=content_uow,
-            files=FilesAttachmentCatalog(describe_files),
-            render=RenderOptions(image_base_url=settings.public_files_base_url),
+        catalog=catalog,
+        search=search,
+        assistant=Assistant(
+            agent=Agent(
+                infra.chat,
+                SiteKnowledge(search, catalog),
+                tracer=LangfuseAgentTracer(infra.langfuse) if infra.langfuse else None,
+            ),
+            limiter=infra.limiter,
+            spend=DailySpend(settings.chat_daily_budget_usd),
         ),
-        search=search_use_cases(infra).search,
         files=FilesUseCases(
-            upload=UploadFile(files_uow, infra.storage, clock),
+            upload=UploadFile(files_uow, infra.storage, clock, PillowImages()),
             list=ListFiles(files_uow, infra.storage),
             describe=describe_files,
             delete=DeleteFile(files_uow, infra.storage),

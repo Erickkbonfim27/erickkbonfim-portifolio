@@ -1,96 +1,220 @@
-import type { Attachment, Availability } from "../api/types";
+import { useState, type FormEvent } from "react";
+import { api } from "../api/client";
+import type { Attachment, Availability, Explained } from "../api/types";
 import { EMAIL, GITHUB, LINKEDIN } from "../content/fallback";
+import { useI18n } from "../i18n";
 import { availabilityText, isOpen } from "../lib/derive";
+import { useApi } from "../lib/useApi";
+import { useInView } from "../lib/useInView";
+import { MAX_QUESTION, hitHref, ms } from "../lib/search";
 import { ArrowUpRight, Check, Download } from "./Icons";
-
-const STEPS = [
-  { n: "01", t: "Sold apartments", s: "Grupo Mello · 2019–23" },
-  { n: "02", t: "Hackathon to startup", s: "ConEng · 2023" },
-  { n: "03", t: "CTO", s: "Vizzion · 2024–25" },
-  { n: "04", t: "Software engineer", s: "SILPI · 2024–26" },
-  { n: "05", t: "AI agents", s: "Loopia · 2026" },
-];
-
-const TRACE = [
-  { cls: "t1", tg: "├", t: "parse_resume", chip: null, bar: "", left: "0%", width: "14.1%", dur: "0.34s" },
-  { cls: "t2", tg: "├", t: "retrieve.hybrid", chip: null, bar: "", left: "14.1%", width: "12%", dur: "0.29s" },
-  { cls: "t3", tg: "├", t: "score_fit", chip: "llm", bar: "acc", left: "26.1%", width: "38.2%", dur: "0.92s" },
-  { cls: "t4", tg: "├", t: "guard.grounding", chip: "pass", bar: "okc", left: "64.3%", width: "7.9%", dur: "0.19s" },
-  { cls: "t5", tg: "├", t: "eval.rubric", chip: "pass", bar: "okc", left: "72.2%", width: "11.6%", dur: "0.28s" },
-  { cls: "t6", tg: "└", t: "draft_feedback", chip: "llm", bar: "acc", left: "83.8%", width: "16.2%", dur: "0.39s" },
-];
+import { Link } from "./Link";
+import { SearchAnswer } from "./SearchAnswer";
 
 interface HeroProps {
   availability: Availability | null;
   cv: Attachment | null;
 }
 
+type Search = ReturnType<typeof useApi<Explained>>;
+
+/** A small chat over this site's own search: the visitor asks, the site answers with the
+ * passages it found. It returns excerpts, not a written answer; that is the agent's job. */
+function Core({ search, query, onAsk }: { search: Search; query: string; onAsk: (question: string) => void }) {
+  const { t } = useI18n();
+  const h = t.hero;
+  const [draft, setDraft] = useState("");
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const question = draft.trim();
+    if (!question) return;
+    onAsk(question.slice(0, MAX_QUESTION));
+    setDraft("");
+  };
+  return (
+    <section className="card dark h-core fade f4" aria-labelledby="core-title">
+      <div className="card-top">
+        <div className="core-head">
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span className="label mono">{h.coreLabel}</span>
+            <h2 id="core-title" style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>
+              {h.coreTitle}
+            </h2>
+          </div>
+        </div>
+        <a className="arrowbtn" href="#approach" aria-label={h.coreLink}>
+          <ArrowUpRight />
+        </a>
+      </div>
+      <div className="chat">
+        {/* Absolutely placed: a long answer scrolls inside the card instead of stretching it. */}
+        <div className="chat-scroll" aria-live="polite">
+          <p className="bubble me">{query}</p>
+          <SearchAnswer search={search} />
+        </div>
+      </div>
+      <div className="asks" role="group" aria-label={h.askLabel}>
+        {h.presets.map((preset) => (
+          <button key={preset} type="button" className="ask" aria-pressed={preset === query} onClick={() => onAsk(preset)}>
+            {preset}
+          </button>
+        ))}
+      </div>
+      <form className="ask-form" onSubmit={submit}>
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          maxLength={MAX_QUESTION}
+          placeholder={h.placeholder}
+          aria-label={h.placeholder}
+        />
+        <button type="submit" className="ask-send" aria-label={h.send} disabled={!draft.trim()}>
+          <ArrowUpRight size={16} />
+        </button>
+      </form>
+      <p className="core-note mono">
+        <span style={{ color: "var(--acc-hi)" }}>//</span> {h.coreCaption}
+      </p>
+    </section>
+  );
+}
+
+function Trace({ search, query }: { search: Search; query: string }) {
+  const { t, to } = useI18n();
+  const h = t.hero;
+  const data = search.data;
+  const steps = data?.steps ?? [];
+  const total = steps.reduce((sum, step) => sum + step.ms, 0) || 1;
+  // Each span starts where the previous ones end: the steps run one after another.
+  const starts = steps.map((_, index) => steps.slice(0, index).reduce((sum, step) => sum + step.ms, 0));
+  const status = search.error ? "fail" : !data ? "run" : data.degraded ? "warn" : "pass";
+  const label = { fail: h.failed, run: h.running, warn: h.degraded, pass: h.passed }[status];
+  return (
+    <figure className="card h-trace fade f5" aria-labelledby="trace-cap" aria-busy={status === "run"}>
+      <div className="card-top">
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+          <span className="label mono">{h.traceLabel}</span>
+          <span className="mono trace-q">GET /api/search/explain?q={query}</span>
+        </div>
+        <span className={`trace-status mono ts-${status}`}>
+          {status === "pass" && <Check size={12} />}
+          {label}
+        </span>
+      </div>
+      {search.error ? (
+        <p className="trace-err" role="status">
+          {h.traceError}
+        </p>
+      ) : (
+        <div className="tw mono">
+          <div className="tr thead" aria-hidden="true">
+            <span>SPAN</span>
+            <span>TIMELINE</span>
+            <span style={{ textAlign: "right" }}>DUR</span>
+          </div>
+          {steps.map((step, index) => {
+            const width = (step.ms / total) * 100;
+            const left = ((starts[index] ?? 0) / total) * 100;
+            return (
+              <div key={step.name} className="tr tr-live">
+                <span className="nm">
+                  <span className="t">{step.name}</span>
+                </span>
+                <span className="wf" aria-hidden="true">
+                  <span className={`bar${step.name.startsWith("rrf") ? " okc" : step.name.startsWith("dense") ? " acc" : ""}`} style={{ left: `${left}%`, width: `${Math.max(width, 1.5)}%` }} />
+                </span>
+                <span className="dur">{ms(step.ms)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {data && data.hits.length > 0 && (
+        <div className="trace-hits">
+          <span className="label mono">{h.results}</span>
+          <ol>
+            {data.hits.map((hit) => {
+              const href = hitHref(hit, to);
+              const text = (
+                <>
+                  <span className="th-title">{hit.title}</span>
+                  {hit.heading && <span className="th-head"> · {hit.heading}</span>}
+                </>
+              );
+              return (
+                <li key={`${hit.entry_id}-${hit.heading}`}>
+                  {href ? <Link to={href}>{text}</Link> : text}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+      <figcaption id="trace-cap" className="mono" style={{ fontSize: 12, lineHeight: 1.6, color: "var(--ink2)" }}>
+        <span style={{ color: "var(--accent)" }}>//</span> {h.traceCaption}
+      </figcaption>
+    </figure>
+  );
+}
+
 export function Hero({ availability, cv }: HeroProps) {
+  const { lang, t, to } = useI18n();
+  const h = t.hero;
+  // A preset by index (it follows the language), or the visitor's own question.
+  const [chosen, setChosen] = useState<number | string>(0);
+  const query = typeof chosen === "number" ? (h.presets[chosen] ?? h.presets[0]) : chosen;
+  const ask = (question: string) => {
+    const preset = h.presets.indexOf(question);
+    setChosen(preset >= 0 ? preset : question);
+  };
+  const [ref, seen] = useInView<HTMLDivElement>(0.1);
+  // Only once the cards are on screen: every search is a real request.
+  const search = useApi<Explained>(seen ? `explain:${lang}:${query}` : null, (signal) =>
+    api.explain(query, lang, { signal, timeoutMs: 12000 }),
+  );
+
   return (
     <section id="top" aria-labelledby="hero-title">
-      <div className="wrap hero">
+      <div ref={ref} className="wrap hero">
         <div className="h-head">
           <div className="fade" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
             <span className="pill">
               {isOpen(availability) && <span className="live" aria-hidden="true" />}
-              {availabilityText(availability)}
+              {availabilityText(availability, lang)}
             </span>
-            <span className="mono" style={{ fontSize: 11.5, letterSpacing: "0.08em", color: "#5F6670" }}>
-              BRUSQUE, SC · REMOTE OR SÃO PAULO
+            <span className="mono" style={{ fontSize: 11.5, letterSpacing: "0.08em", color: "var(--ink3)" }}>
+              {h.location}
             </span>
           </div>
           <h1 id="hero-title" className="h1">
             <span className="ln">
-              <span className="in">I used to sell</span>
-            </span>{" "}
-            {/* The spaces between lines are what screen readers hear: the lines are blocks. */}
-            <span className="ln">
               <span className="in">
-                apartments.{" "}
+                {h.title}{" "}
                 <span className="inl face" aria-hidden="true">
                   <span className="mono">EK</span>
                   <i />
                 </span>
               </span>
             </span>{" "}
-            <span className="ln">
-              <span className="in">Now I build</span>
-            </span>{" "}
-            <span className="ln">
-              <span className="in">
-                <span className="hl">AI agents.</span>{" "}
-                <span className="inl tick" aria-hidden="true">
-                  <span className="d" />
-                  <span className="win mono">
-                    <span className="lst">
-                      <span>planning…</span>
-                      <span>retrieving…</span>
-                      <span>evaluating…</span>
-                      <span>passed ✓</span>
-                      <span>planning…</span>
-                    </span>
-                  </span>
-                </span>
-              </span>
+            <span className="ln tagline">
+              <span className="in">{h.tagline}</span>
             </span>
           </h1>
           <p
             className="fade f1"
-            style={{ maxWidth: 580, fontSize: "clamp(16px, 1.3cqi, 18px)", lineHeight: 1.7, color: "#4A505A", textWrap: "pretty" }}
+            style={{ maxWidth: 620, fontSize: "clamp(16px, 1.3cqi, 18px)", lineHeight: 1.7, color: "var(--ink2)", textWrap: "pretty" }}
           >
-            I'm Erick Kopak Bonfim, a software engineer who most recently built LLM agents at Loopia that talk to
-            e-commerce customers on WhatsApp. Between the apartments and the agents, I co-founded two startups and was
-            CTO of both.
+            {h.intro}
           </p>
           <div className="fade f2" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             <a className="pillbtn pill-dark" href={`mailto:${EMAIL}`}>
-              Email me
+              {h.email}
               <span className="ab">
                 <ArrowUpRight />
               </span>
             </a>
             <a className="pillbtn pill-line" href="#work">
-              See work
+              {h.seeWork}
             </a>
           </div>
           <div className="fade f3" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 20px" }}>
@@ -104,146 +228,40 @@ export function Hero({ availability, cv }: HeroProps) {
             </a>
             {cv && (
               <a className="tlink" href={cv.url} download={cv.filename}>
-                CV (PDF)
+                {h.cv}
                 <Download />
               </a>
             )}
           </div>
         </div>
 
-        <figure className="card dark h-core fade f4" aria-labelledby="core-cap">
-          <div className="floor" aria-hidden="true" />
-          <div className="card-top">
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span className="label mono">Agent core</span>
-              <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>Agents, retrieval, evals</span>
-            </div>
-            <a className="arrowbtn" href="#approach" aria-label="How I work on agents">
-              <ArrowUpRight />
-            </a>
-          </div>
-          <div className="gyro" aria-hidden="true">
-            <div className="scene">
-              <div className="halo" />
-              {["o1", "o2", "o3"].map((o) => (
-                <div key={o} className={`orbit ${o}`}>
-                  <div className="ring">
-                    <span className="sat" />
-                  </div>
-                </div>
-              ))}
-              <div className="orb" />
-            </div>
-            <div className="gchip g1">
-              <span className="k mono">graph.invoke</span>
-              <span className="v">
-                <Check size={14} strokeWidth={2.6} stroke="#5BE3A0" />
-                2.41s
-              </span>
-            </div>
-            <div className="gchip g2">
-              <span className="k mono">evals</span>
-              <span className="v">2 / 2 passed</span>
-            </div>
-            <div className="gchip g3">
-              <span className="k mono">retrieval</span>
-              <span className="v">hybrid · dense + sparse</span>
-            </div>
-          </div>
-          <figcaption id="core-cap" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span className="mono" style={{ fontSize: 12, color: "#A3AAB5" }}>
-              <span style={{ color: "var(--acc-hi)" }}>//</span> pure CSS. no WebGL was harmed.
-            </span>
-            <span className="sr">
-              Decorative animation: an orb with three orbiting rings, representing an agent core, with labels for a
-              passed graph run, passing evals and hybrid retrieval.
-            </span>
-          </figcaption>
-        </figure>
-
-        <figure className="card h-trace fade f5" aria-labelledby="trace-cap">
-          <div className="card-top">
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-              <span className="label mono">Trace</span>
-              <span className="mono" style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                rhye.screening_graph
-              </span>
-            </div>
-            <span className="status mono" aria-hidden="true">
-              <span className="stc st-run">
-                <i />
-                running
-              </span>
-              <span className="stc st-pass">
-                <Check />
-                passed
-              </span>
-            </span>
-          </div>
-          <div className="tw mono" aria-hidden="true">
-            <div className="tr thead">
-              <span>SPAN</span>
-              <span>TIMELINE</span>
-              <span style={{ textAlign: "right" }}>DUR</span>
-            </div>
-            <div className="tr t0">
-              <span className="nm">
-                <span className="t">graph.invoke</span>
-              </span>
-              <span className="wf">
-                <span className="bar root" style={{ left: "0%", width: "100%" }} />
-              </span>
-              <span className="dur">2.41s</span>
-            </div>
-            {TRACE.map((row) => (
-              <div key={row.cls} className={`tr ${row.cls}`}>
-                <span className="nm">
-                  <span className="tg">{row.tg}</span>
-                  <span className="t">{row.t}</span>
-                  {row.chip && <span className={row.chip === "pass" ? "tchip ok" : "tchip"}>{row.chip}</span>}
-                </span>
-                <span className="wf">
-                  <span className={row.bar ? `bar ${row.bar}` : "bar"} style={{ left: row.left, width: row.width }} />
-                </span>
-                <span className="dur">{row.dur}</span>
-              </div>
-            ))}
-            <div className="phwrap">
-              <span />
-              <span className="phcell">
-                <span className="phmove">
-                  <span className="ph" />
-                </span>
-              </span>
-              <span />
-            </div>
-          </div>
-          <figcaption id="trace-cap" className="mono" style={{ fontSize: 12, lineHeight: 1.6, color: "#4A505A" }}>
-            <span style={{ color: "var(--accent)" }}>//</span> sample trace, fake numbers. the habit of tracing every step
-            is real.
-          </figcaption>
-        </figure>
+        <Core search={search} query={query} onAsk={ask} />
+        <Trace search={search} query={query} />
 
         <article className="card h-path fade f6" aria-labelledby="path-title">
           <div className="card-top">
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span className="label mono">Career</span>
+              <span className="label mono">{h.pathLabel}</span>
               <h2 id="path-title" style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>
-                How I got here
+                {h.pathTitle}
               </h2>
             </div>
-            <a className="arrowbtn" href="#experience" aria-label="See full experience">
+            <a className="arrowbtn" href="#experience" aria-label={h.pathLink}>
               <ArrowUpRight />
             </a>
           </div>
-          <ol className="steps">
-            {STEPS.map((step) => (
-              <li key={step.n} className="step">
-                <span className="n mono">{step.n}</span>
-                <span className="tx">
-                  <span className="t">{step.t}</span>
-                  <span className="s">{step.s}</span>
-                </span>
+          <ol className="path">
+            {h.steps.map((step) => (
+              <li key={step.org}>
+                <Link className="path-step" to={to(step.to)}>
+                  <span className="path-when mono">{step.when}</span>
+                  <span className="path-dot" aria-hidden="true" />
+                  <span className="path-tx">
+                    <span className="path-t">{step.t}</span>
+                    <span className="path-org">{step.org}</span>
+                  </span>
+                  <ArrowUpRight size={14} />
+                </Link>
               </li>
             ))}
           </ol>

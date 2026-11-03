@@ -5,7 +5,7 @@ from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from portfolio.contexts.content.application.catalog import (
     AttachmentView,
@@ -77,6 +77,12 @@ class EntryOut(BaseModel):
     tags: list[str]
     details: dict[str, Any]
     body_html: str
+    body: list[dict[str, Any]] = Field(
+        description=(
+            "The body in order: `html` runs (safe, rendered by the server) and structured "
+            "`block`s (gallery, diagram, logos, metrics, timeline…) for the site to render"
+        )
+    )
     skills: list[SkillRefOut]
     attachments: list[AttachmentOut]
     published_at: datetime
@@ -92,6 +98,7 @@ class EntryOut(BaseModel):
             tags=list(entry.tags),
             details=dict(entry.details),
             body_html=entry.body_html,
+            body=[dict(segment) for segment in entry.body],
             skills=[SkillRefOut(slug=s.slug, title=s.title) for s in entry.skills],
             attachments=[AttachmentOut.of(a) for a in entry.attachments],
             published_at=entry.published_at,

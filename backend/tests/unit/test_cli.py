@@ -109,6 +109,8 @@ def test_setup_storage_applies_the_policy(
         engine = Engine()
         qdrant = Closeable()
         dense = Closeable()
+        langfuse = Closeable()
+        chat = Closeable()
 
     monkeypatch.setattr(cli, "build_infrastructure", lambda _settings: Infra())
     for name, value in REQUIRED_SETTINGS.items():

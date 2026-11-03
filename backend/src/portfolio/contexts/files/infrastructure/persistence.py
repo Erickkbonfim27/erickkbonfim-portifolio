@@ -21,7 +21,7 @@ class FileRow(Base):
     filename: Mapped[str] = mapped_column(String(120))
     content_type: Mapped[str] = mapped_column(String(80))
     size: Mapped[int] = mapped_column(BigInteger)
-    sha256: Mapped[str] = mapped_column(String(64))
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -48,6 +48,12 @@ class SqlFileRepository:
     async def get_many(self, ids: Collection[UUID]) -> list[StoredFile]:
         rows = await self._session.scalars(select(FileRow).where(FileRow.id.in_(list(ids))))
         return [_to_file(row) for row in rows]
+
+    async def find_by_sha256(self, sha256: str) -> StoredFile | None:
+        row = await self._session.scalar(
+            select(FileRow).where(FileRow.sha256 == sha256).order_by(FileRow.created_at).limit(1)
+        )
+        return _to_file(row) if row is not None else None
 
     async def list(self) -> list[StoredFile]:
         rows = await self._session.scalars(select(FileRow).order_by(FileRow.created_at.desc()))

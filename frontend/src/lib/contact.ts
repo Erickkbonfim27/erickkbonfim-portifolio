@@ -1,18 +1,16 @@
 import { ApiError } from "../api/client";
+import type { Lang } from "../api/types";
+import { MESSAGES } from "../i18n/messages";
 
-export const MESSAGES = {
-  invalid: "Please check the fields and try again.",
-  rateLimited: "You've sent several messages today. Try again tomorrow, or email me directly.",
-  network: "Couldn't send right now. Check your connection and try again.",
-  sent: "Thanks. Your message reached me, and I'll reply to the contact you left.",
-} as const;
-
-export function errorMessage(error: unknown): string {
+/** What to tell the sender. The API's own 422 detail is English, so it is shown only
+ * on the English page; the Portuguese page gets the general message. */
+export function errorMessage(error: unknown, lang: Lang = "en"): string {
+  const copy = MESSAGES[lang].form;
   if (error instanceof ApiError) {
-    if (error.kind === "invalid") return error.detail ? `${capitalize(error.detail)}.` : MESSAGES.invalid;
-    if (error.kind === "rate_limited") return MESSAGES.rateLimited;
+    if (error.kind === "invalid") return error.detail && lang === "en" ? `${capitalize(error.detail)}.` : copy.invalid;
+    if (error.kind === "rate_limited") return copy.rateLimited;
   }
-  return MESSAGES.network;
+  return copy.network;
 }
 
 function capitalize(text: string): string {

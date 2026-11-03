@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
 import { ContactForm } from "../src/components/ContactForm";
-import { MESSAGES } from "../src/lib/contact";
+import { MESSAGES as COPY } from "../src/i18n/messages";
 import { navigate } from "../src/lib/router";
 import { entry, json, mockFetch, profile, skill } from "./helpers";
 
@@ -21,7 +21,7 @@ describe("ContactForm", () => {
     await fill(user);
     await user.type(screen.getByLabelText("Company (optional)"), "Corp");
     await user.click(screen.getByRole("button", { name: "Send message" }));
-    expect(await screen.findByText(MESSAGES.sent)).toBeInTheDocument();
+    expect(await screen.findByText(COPY.en.form.sent)).toBeInTheDocument();
     expect(screen.getByLabelText("Your name")).toHaveValue("");
     const body = JSON.parse(String(calls[0]?.init?.body));
     expect(body).toEqual({ from: "Ana", contact: "ana@corp.dev", brief: "AI Engineer role, remote.", company: "Corp", lang: "en", website: "" });
@@ -38,7 +38,7 @@ describe("ContactForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Brief needs 10 to 4000 characters.");
     status = 429;
     await user.click(screen.getByRole("button", { name: "Send message" }));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(MESSAGES.rateLimited));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(COPY.en.form.rateLimited));
   });
 
   it("reuses the idempotency key on retry and renews it after an edit", async () => {
@@ -50,7 +50,7 @@ describe("ContactForm", () => {
     render(<ContactForm />);
     await fill(user);
     await user.click(screen.getByRole("button", { name: "Send message" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(MESSAGES.network);
+    expect(await screen.findByRole("alert")).toHaveTextContent(COPY.en.form.network);
     await user.click(screen.getByRole("button", { name: "Send message" }));
     await screen.findByRole("alert");
     const key = (n: number) => (calls[n]?.init?.headers as Record<string, string>)["Idempotency-Key"];
@@ -59,7 +59,7 @@ describe("ContactForm", () => {
     await user.type(screen.getByLabelText("The role or project"), " Edited.");
     fail = false;
     await user.click(screen.getByRole("button", { name: "Send message" }));
-    await screen.findByText(MESSAGES.sent);
+    await screen.findByText(COPY.en.form.sent);
     expect(key(2)).not.toBe(key(0));
   });
 
@@ -72,7 +72,7 @@ describe("ContactForm", () => {
     await user.click(screen.getByRole("button", { name: "Send message" }));
     expect(screen.getByRole("button", { name: "Sending…" })).toBeDisabled();
     await act(async () => release(json({ id: "1" }, 202)));
-    expect(await screen.findByText(MESSAGES.sent)).toBeInTheDocument();
+    expect(await screen.findByText(COPY.en.form.sent)).toBeInTheDocument();
   });
 
   it("forwards the honeypot so the API can drop bots", async () => {
@@ -84,7 +84,7 @@ describe("ContactForm", () => {
     expect(honeypot).not.toBeNull();
     await user.type(honeypot as HTMLInputElement, "spam.biz");
     await user.click(screen.getByRole("button", { name: "Send message" }));
-    await screen.findByText(MESSAGES.sent);
+    await screen.findByText(COPY.en.form.sent);
     expect(JSON.parse(String(calls[0]?.init?.body)).website).toBe("spam.biz");
   });
 });
@@ -93,7 +93,7 @@ describe("Home", () => {
   it("renders the handoff copy when the API is down", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
     render(<App />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("I used to sell apartments. EK Now I build AI agents.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Software and AI engineer. EK Integrations, data and agents in production.");
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     expect(screen.getByText("MAY 2026 — OCT 2026")).toBeInTheDocument();
     expect(screen.getByText("Open to AI Engineer roles")).toBeInTheDocument();
@@ -195,6 +195,6 @@ describe("Case study page", () => {
     expect(window.location.pathname).toBe("/work/loopia");
     expect(await screen.findByRole("heading", { level: 1, name: "Loopia" })).toBeInTheDocument();
     act(() => navigate("/"));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("I used to sell");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Software and AI engineer.");
   });
 });

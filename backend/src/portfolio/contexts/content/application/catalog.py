@@ -53,6 +53,7 @@ class PublicEntry:
     details: Mapping[str, Any]
     body_html: str
     body_text: str
+    body: tuple[Mapping[str, Any], ...]
     skills: tuple[SkillRef, ...]
     attachments: tuple[AttachmentView, ...]
     published_at: datetime
@@ -154,6 +155,7 @@ class PublicCatalog:
             details=entry.content.details,
             body_html=richtext.render_html(text.body, self.render),
             body_text=richtext.plain_text(text.body),
+            body=tuple(richtext.segments(text.body, self.render)),
             # Draft skills are left out: the public never sees a draft, not even by name.
             skills=tuple(skills[s] for s in entry.content.skills if s in skills),
             attachments=tuple(

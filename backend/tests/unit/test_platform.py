@@ -143,3 +143,28 @@ async def test_a_qdrant_url_without_port_uses_the_scheme_default() -> None:
     infra = build_infrastructure(settings_for_tests(qdrant_url="https://qdrant.example.dev"))
     assert infra.qdrant._client.rest_uri == "https://qdrant.example.dev"  # type: ignore[attr-defined]
     await close_infrastructure(infra)
+
+
+async def test_langfuse_is_wired_only_with_both_keys() -> None:
+    plain = build_infrastructure(
+        settings_for_tests(langfuse_public_key="pk", langfuse_secret_key="")
+    )
+    assert plain.langfuse is None
+    assert search_use_cases(plain).search.tracer is None
+    await close_infrastructure(plain)
+    traced = build_infrastructure(
+        settings_for_tests(langfuse_public_key="pk-lf-1", langfuse_secret_key="sk-lf-1")
+    )
+    assert traced.langfuse is not None
+    assert search_use_cases(traced).search.tracer is not None
+    await close_infrastructure(traced)
+
+
+def test_langfuse_url_reads_either_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    _env(monkeypatch)
+    assert Settings().langfuse_host == "https://cloud.langfuse.com"
+    monkeypatch.setenv("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com")
+    assert Settings().langfuse_host == "https://us.cloud.langfuse.com"
+    monkeypatch.delenv("LANGFUSE_BASE_URL")
+    monkeypatch.setenv("LANGFUSE_HOST", "https://eu.example.dev")
+    assert Settings().langfuse_host == "https://eu.example.dev"

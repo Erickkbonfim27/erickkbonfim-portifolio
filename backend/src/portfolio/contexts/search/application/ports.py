@@ -1,5 +1,7 @@
 from collections.abc import Sequence
-from typing import Protocol
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal, Protocol
 from uuid import UUID
 
 from portfolio.contexts.search.domain.model import (
@@ -60,4 +62,38 @@ class VectorIndex(Protocol):
         self, query: SearchQuery, dense: DenseVector | None, sparse: SparseVector
     ) -> list[SearchHit]:
         """Hybrid when `dense` is given (fused by rank), BM25 only otherwise."""
+        ...
+
+    async def rank(
+        self,
+        query: SearchQuery,
+        using: Literal["dense", "sparse"],
+        vector: DenseVector | SparseVector,
+    ) -> list[SearchHit]:
+        """One side of the hybrid search alone, to show what each ranking contributes."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class Step:
+    name: str
+    start_ms: float  # from the start of the run
+    ms: float
+
+
+@dataclass(frozen=True, slots=True)
+class SearchRun:
+    """One search, as observability sees it: what was asked, each step, what came back."""
+
+    name: str  # "search" or "search.explain"
+    query: SearchQuery
+    started_at: datetime
+    steps: Sequence[Step]
+    hits: Sequence[SearchHit]
+    degraded: bool
+
+
+class SearchTracer(Protocol):
+    def record(self, run: SearchRun) -> None:
+        """Hand the run to the tracing backend. Must not block nor raise."""
         ...

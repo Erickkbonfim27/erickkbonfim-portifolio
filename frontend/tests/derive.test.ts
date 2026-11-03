@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  AVAILABILITY_CLOSED,
-  AVAILABILITY_OPEN,
-  FALLBACK_EXPERIENCE,
-  FALLBACK_LEARNING,
-  FALLBACK_STACK,
-  FALLBACK_WORK,
-} from "../src/content/fallback";
+import { FALLBACK } from "../src/content/fallback";
+import { MESSAGES } from "../src/i18n/messages";
 import {
   availabilityText,
   cvAttachment,
@@ -23,12 +17,26 @@ import { buildCells } from "../src/lib/parcels";
 import { entry, profile, skill } from "./helpers";
 
 const NOV_2026 = new Date(2026, 10, 2);
+const { experience: FALLBACK_EXPERIENCE, learning: FALLBACK_LEARNING, stack: FALLBACK_STACK, work: FALLBACK_WORK } = FALLBACK.en;
+const { open: AVAILABILITY_OPEN, closed: AVAILABILITY_CLOSED } = MESSAGES.en.availability;
 
 describe("fallback copy", () => {
-  it("has the factual fixes: Loopia ended, no one is 'now'", () => {
+  it("has the factual fixes in both languages: Loopia ended, no one is 'now'", () => {
     expect(FALLBACK_EXPERIENCE[0]).toMatchObject({ company: "Loopia", when: "MAY 2026 — OCT 2026", now: false });
-    expect(FALLBACK_EXPERIENCE.every((row) => !row.now)).toBe(true);
-    expect(JSON.stringify(FALLBACK_WORK)).not.toContain("80M");
+    expect(FALLBACK.pt.experience[0]).toMatchObject({ company: "Loopia", when: "MAI 2026 — OUT 2026", now: false });
+    for (const lang of ["en", "pt"] as const) {
+      expect(FALLBACK[lang].experience.every((row) => !row.now)).toBe(true);
+      expect(JSON.stringify(FALLBACK[lang])).not.toContain("80M");
+    }
+  });
+
+  it("has the same cards in both languages", () => {
+    const keys = (lang: "en" | "pt") => ({
+      experience: FALLBACK[lang].experience.map((row) => row.key),
+      stack: FALLBACK[lang].stack.map((group) => [group.key, group.tags]),
+      work: Object.keys(FALLBACK[lang].work),
+    });
+    expect(keys("pt")).toEqual(keys("en"));
   });
 });
 
@@ -47,6 +55,18 @@ describe("experienceRows", () => {
     expect(rows[0]).toEqual({ key: "next", when: "DEC 2026 — NOW", now: true, company: "Next", role: "AI Engineer", desc: "Agents." });
     expect(rows[1]).toMatchObject({ when: "MAY 2026 — OCT 2026", now: false, company: "Loopia" });
     expect(rows[2]).toMatchObject({ when: "", company: "Role only" });
+  });
+
+  it("explains a contract that ran alongside a company Erick founded", () => {
+    const silpi = entry({ slug: "silpi", details: { organization: "SILPI", start: "2024-06", end: "2026-05", employment: "contract" } });
+    const vizzion = entry({ slug: "vizzion", details: { organization: "Vizzion", start: "2024-03", end: "2025-10", employment: "founder" } });
+    const later = entry({ slug: "later", details: { organization: "Later", start: "2027-01", employment: "founder" } });
+    expect(experienceRows([silpi, vizzion], "pt")[0]?.flag).toBe("Prestação de serviço, em paralelo à Vizzion");
+    expect(experienceRows([silpi, later])[0]?.flag).toBe("Service provider");
+    const open = entry({ slug: "open", details: { organization: "Open", employment: "contract" } });
+    const founderNoDates = entry({ slug: "f", details: { organization: "F", employment: "founder" } });
+    expect(experienceRows([open, founderNoDates])[0]?.flag).toBe("Service provider, in parallel with F");
+    expect(experienceRows([vizzion])[0]?.flag).toBeUndefined();
   });
 });
 
@@ -124,6 +144,25 @@ describe("small helpers", () => {
     expect(cvAttachment(null)).toBeNull();
   });
 
+  it("speaks Portuguese when asked", () => {
+    expect(formatMonth("2026-05", "pt")).toBe("MAI 2026");
+    expect(period({ start: "2024-03" }, "pt")).toBe("MAR 2024 — ATUAL");
+    const loopia = entry({ slug: "loopia", title: "Engenheiro", details: { organization: "Loopia", start: "2026-05", end: "2026-10" } });
+    expect(experienceRows([loopia], "pt")[0]).toMatchObject({ when: "MAI 2026 — OUT 2026" });
+    expect(experienceRows(null, "pt")).toBe(FALLBACK.pt.experience);
+    const cert = entry({ kind: "certificate", slug: "c", title: "LangSmith", summary: "", details: { issued: "2026-10" } });
+    const ongoing = entry({ kind: "education", slug: "p", title: "Dados e IA", details: { institution: "PUCRS", start: "2026-04" } });
+    const study = entry({ kind: "study", slug: "d", title: "Deep Agents", summary: "", details: { progress: "in_progress" } });
+    expect(learningCards([ongoing], [cert], [study], NOV_2026, "pt").map((card) => [card.label, card.meta])).toEqual([
+      ["Formação · 2026", "PUCRS · em andamento"],
+      ["Concluído · Out 2026", ""],
+      ["Estudando agora", ""],
+    ]);
+    expect(stackGroups([skill("LangGraph", "ai")], "pt")[0]).toMatchObject({ title: "Agentes e LLMs", label: "Principal" });
+    expect(workText("rhye", null, "pt")).toBe(FALLBACK.pt.work.rhye);
+    expect(availabilityText(null, "pt")).toBe("Aberto a vagas de AI Engineer");
+  });
+
   it("formats months, periods and sizes", () => {
     expect(formatMonth("2026-05")).toBe("MAY 2026");
     expect(formatMonth("2026-13")).toBe("2026-13");
@@ -131,6 +170,7 @@ describe("small helpers", () => {
     expect(formatMonth(7)).toBeNull();
     expect(period({ start: "2024-03", end: "2025-10" })).toBe("MAR 2024 — OCT 2025");
     expect(period({ start: "2024-03" })).toBe("MAR 2024 — NOW");
+    expect(period({ start: "2023-09", end: "2023-09" })).toBe("SEP 2023");
     expect(period({ end: "2025-10" })).toBe("OCT 2025");
     expect(period({})).toBeNull();
     expect([formatBytes(500), formatBytes(2048), formatBytes(3.5 * 1024 * 1024)]).toEqual(["500 B", "2 KB", "3.5 MB"]);

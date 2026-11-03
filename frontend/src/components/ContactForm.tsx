@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from "react";
-import { api, LANG } from "../api/client";
-import { errorMessage, MESSAGES } from "../lib/contact";
+import { api } from "../api/client";
+import { useI18n } from "../i18n";
+import { errorMessage } from "../lib/contact";
 
 type Status = { kind: "idle" } | { kind: "sending" } | { kind: "sent" } | { kind: "error"; message: string };
 
@@ -24,6 +25,8 @@ function newKey(): string {
  * reuses it (the API returns the same id instead of storing a duplicate); editing the
  * message starts a new one. */
 export function ContactForm() {
+  const { lang, t } = useI18n();
+  const f = t.form;
   const id = useId();
   const [fields, setFields] = useState<Fields>(EMPTY);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -48,7 +51,7 @@ export function ContactForm() {
           contact: fields.contact,
           brief: fields.brief,
           ...(company ? { company } : {}),
-          lang: LANG,
+          lang,
           website: fields.website,
         },
         key.current,
@@ -57,7 +60,7 @@ export function ContactForm() {
       setFields(EMPTY);
       setStatus({ kind: "sent" });
     } catch (error) {
-      setStatus({ kind: "error", message: errorMessage(error) });
+      setStatus({ kind: "error", message: errorMessage(error, lang) });
     }
   };
 
@@ -66,11 +69,11 @@ export function ContactForm() {
     <form className="cform" onSubmit={submit} aria-describedby={`${id}-privacy`}>
       <div className="cfields">
         <label className="cfield" htmlFor={`${id}-from`}>
-          <span className="clabel mono">Your name</span>
+          <span className="clabel mono">{f.name}</span>
           <input id={`${id}-from`} name="from" required maxLength={120} autoComplete="name" value={fields.from} onChange={update("from")} />
         </label>
         <label className="cfield" htmlFor={`${id}-contact`}>
-          <span className="clabel mono">Email or phone</span>
+          <span className="clabel mono">{f.contact}</span>
           <input
             id={`${id}-contact`}
             name="contact"
@@ -83,11 +86,11 @@ export function ContactForm() {
           />
         </label>
         <label className="cfield" htmlFor={`${id}-company`}>
-          <span className="clabel mono">Company (optional)</span>
+          <span className="clabel mono">{f.company}</span>
           <input id={`${id}-company`} name="company" maxLength={120} autoComplete="organization" value={fields.company} onChange={update("company")} />
         </label>
         <label className="cfield wide" htmlFor={`${id}-brief`}>
-          <span className="clabel mono">The role or project</span>
+          <span className="clabel mono">{f.brief}</span>
           <textarea
             id={`${id}-brief`}
             name="brief"
@@ -107,14 +110,14 @@ export function ContactForm() {
       </div>
       <div className="cactions">
         <button className="pillbtn pill-light" type="submit" disabled={sending}>
-          {sending ? "Sending…" : "Send message"}
+          {sending ? f.sending : f.send}
         </button>
         <p id={`${id}-privacy`} className="cnote mono">
-          Used only to reply to you; deleted after 12 months.
+          {f.privacy}
         </p>
       </div>
       <p className={status.kind === "error" ? "cstatus err" : "cstatus"} role={status.kind === "error" ? "alert" : "status"}>
-        {status.kind === "sent" && MESSAGES.sent}
+        {status.kind === "sent" && f.sent}
         {status.kind === "error" && status.message}
       </p>
     </form>

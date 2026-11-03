@@ -21,11 +21,27 @@ are in the database but not in the files are reported, never deleted.
     **bold**, *italic*, `code` and [links](https://…).
     ''' }
     pt = { title = "Rhye", summary = "…" }
+
+`draft = true` keeps an entry in the database without publishing it (a case
+that waits for its results). An entry that is already published stays published.
+
+Structured blocks (domain/blocks.py) are fenced JSON, optionally `hidden`. A
+string `"file:<path>"` anywhere in a body is a local file, relative to the seed
+directory: it is uploaded (photos become WebP without metadata, and the same
+bytes are stored once) and replaced by its public URL.
+
+    ```block gallery
+    {"layout": "feature", "items": [{"src": "file:photos/booth.heic", "alt": "…"}]}
+    ```
+
+A line `@include <path>` is replaced by that file's text, for blocks too large to
+write inline (a wall of 150 logos).
 """
 
+import json
 import re
 import tomllib
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -38,6 +54,7 @@ from portfolio.contexts.content.domain.errors import ContentError
 from portfolio.contexts.content.domain.kinds import Kind, Lang, Status
 
 Say = Callable[[str], None]
+Upload = Callable[[Path], Awaitable[str]]
 
 # --- Markdown subset to the canonical rich-text document -----------------------
 
@@ -91,6 +108,29 @@ def _list(kind: str, items: Sequence[str]) -> dict[str, Any]:
     }
 
 
+def _block(info: str, source: str) -> dict[str, Any]:
+    _, *words = info.split()
+    if not words or words[1:] not in ([], ["hidden"]):
+        raise SeedError("a block fence is ```block <kind> [hidden]")
+    try:
+        data = json.loads(source)
+    except ValueError as error:
+        raise SeedError(f"block {words[0]}: invalid JSON ({error})") from error
+    attrs: dict[str, Any] = {"kind": words[0], "data": data}
+    if words[1:]:
+        attrs["hidden"] = True
+    return {"type": "block", "attrs": attrs}
+
+
+def _fenced(info: str, source: str) -> dict[str, Any]:
+    if info.split(maxsplit=1)[:1] == ["block"]:
+        return _block(info, source)
+    code: dict[str, Any] = {"type": "codeBlock", "content": [_text(source)]}
+    if info:
+        code["attrs"] = {"language": info}
+    return code
+
+
 def markdown_to_doc(source: str) -> dict[str, Any]:
     """Blocks are separated by blank lines; lines of one paragraph are joined."""
     blocks: list[dict[str, Any]] = []
@@ -101,17 +141,14 @@ def markdown_to_doc(source: str) -> dict[str, Any]:
         if not line:
             i += 1
         elif line.startswith("```"):
-            language = line[3:].strip()
+            info = line[3:].strip()
             body: list[str] = []
             i += 1
             while i < len(lines) and not lines[i].strip().startswith("```"):
                 body.append(lines[i])
                 i += 1
             i += 1  # the closing fence
-            code: dict[str, Any] = {"type": "codeBlock", "content": [_text("\n".join(body))]}
-            if language:
-                code["attrs"] = {"language": language}
-            blocks.append(code)
+            blocks.append(_fenced(info, "\n".join(body)))
         elif heading := _HEADING.match(line):
             level = len(heading[1])
             blocks.append(
@@ -159,6 +196,7 @@ class SeedEntry:
     kind: Kind
     slug: str
     raw: Mapping[str, Any]
+    base: Path = Path()  # the directory "file:" paths are relative to
 
     @property
     def label(self) -> str:
@@ -185,11 +223,55 @@ def read_entries(paths: Iterable[Path]) -> list[SeedEntry]:
             if (kind, slug) in seen:
                 raise SeedError(f"{file.name}: {kind}/{slug} appears twice")
             seen.add((kind, slug))
-            entries.append(SeedEntry(kind, slug, raw))
+            entries.append(SeedEntry(kind, slug, raw, file.parent))
     if not entries:
         raise SeedError("no [[entry]] found")
     # Skills first: other entries refer to them.
     return sorted(entries, key=lambda e: e.kind is not Kind.SKILL)
+
+
+_FILE = re.compile(r'"file:([^"]+)"')
+_INCLUDE = re.compile(r"^@include (\S+)$", re.MULTILINE)
+
+
+def _include(entry: SeedEntry, body: str) -> str:
+    def text(match: re.Match[str]) -> str:
+        path = entry.base / match[1]
+        if not path.is_file():
+            raise SeedError(f"{entry.label}: no such file to include {match[1]}")
+        return path.read_text(encoding="utf-8")
+
+    return _INCLUDE.sub(text, body)
+
+
+async def upload_files(entries: Sequence[SeedEntry], upload: Upload | None) -> list[SeedEntry]:
+    """Replace every "file:<path>" in the bodies by the URL of the uploaded file."""
+    urls: dict[Path, str] = {}
+
+    async def resolve(entry: SeedEntry, body: str) -> str:
+        body = _include(entry, body)
+        out, cursor = [], 0
+        for match in _FILE.finditer(body):
+            path = (entry.base / match[1]).resolve()
+            if path not in urls:
+                if upload is None:
+                    raise SeedError(f"{entry.label}: files need storage to upload {match[1]}")
+                if not path.is_file():
+                    raise SeedError(f"{entry.label}: no such file {match[1]}")
+                urls[path] = await upload(path)
+            out += [body[cursor : match.start()], json.dumps(urls[path])]
+            cursor = match.end()
+        return "".join([*out, body[cursor:]])
+
+    resolved = []
+    for entry in entries:
+        raw = dict(entry.raw)
+        for lang in Lang:
+            text = raw.get(lang.value)
+            if isinstance(text, Mapping) and isinstance(text.get("body"), str):
+                raw[lang.value] = {**text, "body": await resolve(entry, text["body"])}
+        resolved.append(replace(entry, raw=raw))
+    return resolved
 
 
 def _translation(raw: Mapping[str, Any]) -> Translation:
@@ -250,15 +332,17 @@ async def _apply(
     else:
         current = await content.update(existing.id, existing.version, draft)
         report.updated += 1
-    if current.status is Status.DRAFT:
+    if current.status is Status.DRAFT and not entry.raw.get("draft", False):
         current = await content.publish(current.id, current.version)
         report.published += 1
     return current
 
 
-async def seed(content: ContentUseCases, paths: Sequence[Path], say: Say) -> int:
+async def seed(
+    content: ContentUseCases, paths: Sequence[Path], say: Say, upload: Upload | None = None
+) -> int:
     try:
-        entries = read_entries(paths)
+        entries = await upload_files(read_entries(paths), upload)
     except SeedError as error:
         say(f"Seed refused: {error}")
         return 1

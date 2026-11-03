@@ -30,6 +30,7 @@ export function entry(overrides: Partial<Entry> = {}): Entry {
     tags: [],
     details: {},
     body_html: "",
+    body: [],
     skills: [],
     attachments: [],
     published_at: "2026-11-01T00:00:00Z",

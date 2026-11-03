@@ -1,40 +1,51 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import type { Attachment } from "../api/types";
+import { useI18n } from "../i18n";
+import { AssistantDot } from "./AssistantDot";
 import { Mark } from "./Icons";
-import { Nav, type Base } from "./Nav";
+import { Nav } from "./Nav";
 
 const ACCENT = "#2E4BFF";
 
 interface LayoutProps {
-  base: Base;
+  /** True on the home page: section links are plain #hash anchors there. */
+  onHome: boolean;
   cv: Attachment | null;
+  /** The browser tab title for this page. */
+  title: string;
   children: ReactNode;
 }
 
 /** The `.ekb` page shell from the handoff: starfield, slab, sticky nav, footer. */
-export function Layout({ base, cv, children }: LayoutProps) {
+export function Layout({ onHome, cv, title, children }: LayoutProps) {
+  const { t } = useI18n();
+
+  useEffect(() => {
+    document.title = title;
+    document.documentElement.lang = t.htmlLang;
+  }, [title, t.htmlLang]);
+
   return (
     <div className="ekb" style={{ "--accent": ACCENT } as CSSProperties}>
       <a className="skip" href="#main">
-        Skip to content
+        {t.layout.skip}
       </a>
       <div className="slab">
-        <Nav base={base} cv={cv} />
+        <Nav onHome={onHome} cv={cv} />
         <main id="main">{children}</main>
         <footer className="wrap foot">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="foot-mark">
             <Mark small />
-            <p style={{ fontSize: 14, color: "#4A505A" }}>© 2026 Erick Kopak Bonfim</p>
+            <p className="foot-copy">© 2026 Erick Kopak Bonfim</p>
           </div>
-          <p className="mono" style={{ fontSize: 11.5, letterSpacing: "0.04em", color: "#5F6670" }}>
-            Designed and coded by Erick in Brusque, SC
-          </p>
+          <p className="mono foot-note">{t.layout.madeBy}</p>
           {/* Every page has a #top, so this stays a same-page anchor. */}
           <a className="pillbtn pill-line sm" href="#top">
-            Back to top
+            {t.layout.backToTop}
           </a>
         </footer>
       </div>
+      <AssistantDot />
     </div>
   );
 }

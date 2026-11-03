@@ -66,6 +66,10 @@ class TestRendering:
         link = {"type": "link", "attrs": {"href": "mailto:e@x.dev"}}
         assert render(doc(p(t("mail", link)))) == '<p><a href="mailto:e@x.dev">mail</a></p>'
 
+    def test_links_inside_the_site_stay_in_place(self) -> None:
+        link = {"type": "link", "attrs": {"href": "/work/vizzion"}}
+        assert render(doc(p(t("case", link)))) == '<p><a href="/work/vizzion">case</a></p>'
+
     def test_headings_alignment_and_breaks(self) -> None:
         html = render(
             doc(
@@ -195,3 +199,5 @@ def test_safe_link() -> None:
     assert richtext.safe_link(" https://a.dev ") == "https://a.dev"
     assert richtext.safe_link(42) is None
     assert richtext.safe_link("ftp://a.dev") is None
+    assert richtext.safe_link(" /work/vizzion ") == "/work/vizzion"
+    assert richtext.safe_link("//evil.test/x") is None

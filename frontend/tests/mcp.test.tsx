@@ -66,8 +66,9 @@ describe("Nav", () => {
 
 describe("MCP page", () => {
   it("is a route of its own, with or without a trailing slash", () => {
-    expect(matchRoute("/mcp")).toEqual({ name: "mcp" });
-    expect(matchRoute("/mcp/")).toEqual({ name: "mcp" });
+    expect(matchRoute("/mcp")).toEqual({ lang: "en", name: "mcp" });
+    expect(matchRoute("/mcp/")).toEqual({ lang: "en", name: "mcp" });
+    expect(matchRoute("/pt/mcp")).toEqual({ lang: "pt", name: "mcp" });
   });
 
   it("derives the server URL from the API base, or the site's origin", () => {

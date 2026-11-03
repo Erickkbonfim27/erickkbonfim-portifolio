@@ -50,6 +50,7 @@ class CreateAdmin:
 class LoginResult:
     token: str
     expires_at: datetime
+    lifetime_seconds: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,7 +94,8 @@ class Login:
             )
             await uow.sessions.add(session)
             await uow.commit()
-        return LoginResult(token=token, expires_at=session.expires_at)
+        lifetime = int((session.expires_at - session.created_at).total_seconds())
+        return LoginResult(token=token, expires_at=session.expires_at, lifetime_seconds=lifetime)
 
     @staticmethod
     async def _find(uow: IdentityUnitOfWork, email: str) -> AdminUser | None:

@@ -40,9 +40,14 @@ def asyncpg_url(database_url: str) -> str:
 
 
 def create_engine(database_url: str) -> AsyncEngine:
-    # Small pool: one VPS, low traffic. pre_ping survives the database restarting.
+    # Small pool: one VPS, low traffic. pre_ping survives the database restarting;
+    # recycling drops connections a NAT or a proxy may have closed while idle.
     return create_async_engine(
-        asyncpg_url(database_url), pool_size=5, max_overflow=5, pool_pre_ping=True
+        asyncpg_url(database_url),
+        pool_size=5,
+        max_overflow=5,
+        pool_pre_ping=True,
+        pool_recycle=280,
     )
 
 

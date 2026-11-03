@@ -11,4 +11,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   window.history.replaceState({}, "", "/");
+  window.localStorage.clear();
+  delete document.documentElement.dataset.theme;
 });

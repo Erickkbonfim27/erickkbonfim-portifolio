@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -47,6 +47,36 @@ class Settings(BaseSettings):
     # Where fastembed keeps the BM25 files (a few KB of stopwords per language).
     fastembed_cache_dir: str | None = None
 
+    # The site's agent, through OpenRouter (the same key as the embeddings). Each tier
+    # lists fallbacks after the first model.
+    chat_models: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["openai/gpt-oss-120b", "google/gemini-2.5-flash"]
+    )
+    chat_models_strong: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [
+            "openai/gpt-4.1-mini",
+            "openai/gpt-4o-mini",
+            "google/gemini-2.5-flash",
+        ]
+    )
+    # What the agent may cost per day, in US$, across all visitors.
+    chat_daily_budget_usd: float = Field(default=0.5, ge=0)
+
+    # Traces of searches and of the agent go to Langfuse when both keys are set.
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    # LANGFUSE_BASE_URL is the name the Langfuse SDKs use; LANGFUSE_HOST the older one.
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        validation_alias=AliasChoices("langfuse_base_url", "langfuse_host"),
+    )
+    # Separates the site's traces from local runs and evals in Langfuse.
+    langfuse_environment: str = Field(
+        default="production",
+        validation_alias=AliasChoices("langfuse_tracing_environment", "langfuse_environment"),
+        pattern=r"^[a-z0-9_-]{1,40}$",
+    )
+
     # Rate limit keys are HMACs of the client IP; the raw IP is never stored.
     ip_hash_secret: str = Field(min_length=32)
 
@@ -56,7 +86,7 @@ class Settings(BaseSettings):
     mail_from: str | None = None
     owner_email: str | None = None
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "chat_models", "chat_models_strong", mode="before")
     @classmethod
     def _split_origins(cls, raw: object) -> object:
         if isinstance(raw, str):
@@ -80,6 +110,8 @@ class Settings(BaseSettings):
         "owner_email",
         "qdrant_api_key",
         "fastembed_cache_dir",
+        "langfuse_public_key",
+        "langfuse_secret_key",
         mode="before",
     )
     @classmethod

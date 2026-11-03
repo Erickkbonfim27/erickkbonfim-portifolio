@@ -4,13 +4,23 @@ from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
-from portfolio.contexts.files.application.ports import Clock, FilesUnitOfWork, ObjectStorage
+from portfolio.contexts.files.application.ports import (
+    Clock,
+    FilesUnitOfWork,
+    ImageEncoder,
+    ObjectStorage,
+)
 from portfolio.contexts.files.domain.model import (
+    GEOJSON,
+    HEAD_SIZE,
     MAX_SIZE,
+    PHOTOS,
+    WEBP,
     FileTooLargeError,
     MissingFileError,
     StoredFile,
     UnsupportedFileError,
+    check_geojson,
     clean_filename,
     detect_type,
 )
@@ -31,13 +41,24 @@ class UploadFile:
     uow: UnitOfWorkFactory
     storage: ObjectStorage
     clock: Clock
+    images: ImageEncoder
 
     async def __call__(self, filename: str, data: bytes) -> PublicFile:
         if len(data) > MAX_SIZE:
             raise FileTooLargeError(f"files are limited to {MAX_SIZE // (1024 * 1024)} MB")
         if not data:
             raise UnsupportedFileError("the file is empty")
-        media = detect_type(data[:16])
+        media = detect_type(data[:HEAD_SIZE])
+        if media in PHOTOS:
+            data, media = self.images.to_webp(data), WEBP
+        elif media is GEOJSON:
+            check_geojson(data)
+        sha256 = hashlib.sha256(data).hexdigest()
+        async with self.uow() as uow:
+            existing = await uow.files.find_by_sha256(sha256)
+        if existing is not None:
+            # The same bytes again (a re-run seed, a second upload): one object is enough.
+            return PublicFile(existing, self.storage.public_url(existing.key))
         file_id = uuid4()
         stored = StoredFile(
             id=file_id,
@@ -46,7 +67,7 @@ class UploadFile:
             filename=clean_filename(filename, media),
             content_type=media.mime,
             size=len(data),
-            sha256=hashlib.sha256(data).hexdigest(),
+            sha256=sha256,
             created_at=self.clock.now(),
         )
         # Object first, row second: a row never points at a missing object.
