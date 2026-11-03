@@ -269,3 +269,36 @@ def test_cli_seed_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
     write(tmp_path, skills=SKILLS)
     assert cli.main(["seed", str(tmp_path)], container=world.container()) == 0
     assert "1 created" in capsys.readouterr().out
+
+
+def test_cli_seed_uploads_local_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    world = make_world()
+    (tmp_path / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 10)
+    gallery = '{"items": [{"src": "file:logo.png", "alt": "Logo"}]}'
+    project = f"""
+[[entry]]
+kind = "project"
+slug = "vizzion"
+details = {{ collection = "portfolio" }}
+en = {{ title = "Vizzion", summary = "Proptech.", body = '''
+```block gallery
+{gallery}
+```
+''' }}
+pt = {{ title = "Vizzion", summary = "Proptech." }}
+"""
+    write(tmp_path, projects=project)
+    assert cli.main(["seed", str(tmp_path)], container=world.container()) == 0
+    assert "1 created" in capsys.readouterr().out
+    [stored] = world.files.data.values()
+    assert stored.content_type == "image/webp"
+
+
+async def test_draft_entries_are_saved_but_not_published(tmp_path: Path) -> None:
+    world = make_world()
+    draft = PROJECT.replace('slug = "rhye"', 'slug = "nasa"\ndraft = true')
+    code, said = await run(world, write(tmp_path, skills=SKILLS, projects=draft))
+    assert code == 0
+    assert said[-1].endswith("1 published.")  # the skill only
+    [nasa] = [e for e in await world.container().content.list() if e.slug == "nasa"]
+    assert nasa.status is Status.DRAFT

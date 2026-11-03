@@ -1,11 +1,14 @@
+import io
 import json
 from collections.abc import AsyncIterator
 from typing import Any
 from uuid import UUID, uuid4
 
+import pillow_heif
 import pytest
 from botocore.exceptions import ClientError
 from httpx import ASGITransport, AsyncClient
+from PIL import Image
 
 from portfolio.contexts.files.application.use_cases import FilesUseCases
 from portfolio.contexts.files.domain.model import (
@@ -14,9 +17,11 @@ from portfolio.contexts.files.domain.model import (
     FileTooLargeError,
     MissingFileError,
     UnsupportedFileError,
+    check_geojson,
     clean_filename,
     detect_type,
 )
+from portfolio.contexts.files.infrastructure.images import PillowImages
 from portfolio.contexts.files.infrastructure.storage import (
     S3Storage,
     content_disposition,
@@ -42,12 +47,18 @@ class TestDomain:
             (b"GIF89a....", "gif"),
             (b"RIFF\x00\x00\x00\x00WEBPVP8 ", "webp"),
             (b"PK\x03\x04rest", "zip"),
+            (b"\x00\x00\x00\x18ftypheic\x00\x00", "heic"),
+            (b"\x00\x00\x00\x18ftypmif1\x00\x00", "heic"),
+            (b'  {"type": "Feat', "geojson"),
         ],
     )
     def test_detects_by_magic_bytes(self, head: bytes, extension: str) -> None:
         assert detect_type(head).extension == extension
 
-    @pytest.mark.parametrize("head", [b"<svg onload=alert(1)>", b"MZ\x90\x00", b"<html>"])
+    @pytest.mark.parametrize(
+        "head",
+        [b"<svg onload=alert(1)>", b"MZ\x90\x00", b"<html>", b"\x00\x00\x00\x18ftypavif"],
+    )
     def test_rejects_everything_else(self, head: bytes) -> None:
         with pytest.raises(UnsupportedFileError):
             detect_type(head)
@@ -83,6 +94,61 @@ def uc(store: FilesStore, storage: FakeStorage) -> FilesUseCases:
     return files_use_cases(store, storage, FixedClock())
 
 
+class TestGeoJson:
+    def test_accepts_features(self) -> None:
+        check_geojson(b'{"type": "FeatureCollection", "features": []}')
+        check_geojson(b'{"type": "Feature", "geometry": null, "properties": {}}')
+
+    @pytest.mark.parametrize(
+        "data", [b"{not json", b'{"type": "Topology"}', b"[1, 2]", b"\xff\xfe{"]
+    )
+    def test_refuses_anything_else(self, data: bytes) -> None:
+        with pytest.raises(UnsupportedFileError):
+            check_geojson(data)
+
+
+def _photo(fmt: str, size: tuple[int, int] = (40, 20), exif: bool = True) -> bytes:
+    image = Image.new("RGB", size, (200, 30, 30))
+    out = io.BytesIO()
+    if fmt == "HEIF":
+        pillow_heif.from_pillow(image).save(out, quality=50)
+        return out.getvalue()
+    tags = Image.Exif()
+    if exif:
+        tags[0x0112] = 6  # orientation: rotate 90° clockwise to display
+        tags[0x8825] = {2: (27.0, 5.0, 0.0)}  # a GPS latitude
+    image.save(out, fmt, exif=tags)
+    return out.getvalue()
+
+
+class TestPillowImages:
+    def test_turns_photos_into_upright_webp_without_metadata(self) -> None:
+        webp = PillowImages().to_webp(_photo("JPEG"))
+        assert detect_type(webp[:16]).extension == "webp"
+        with Image.open(io.BytesIO(webp)) as image:
+            assert image.size == (20, 40)  # the EXIF rotation was applied
+            assert not image.getexif()
+            assert "exif" not in image.info
+
+    def test_reads_heic_and_shrinks_large_photos(self) -> None:
+        heic = _photo("HEIF", (300, 100))
+        assert detect_type(heic[:16]).extension == "heic"
+        webp = PillowImages(max_side=150).to_webp(heic)
+        with Image.open(io.BytesIO(webp)) as image:
+            assert image.size == (150, 50)
+
+    def test_keeps_transparency_and_converts_palettes(self) -> None:
+        for mode in ("RGBA", "P", "LA"):
+            out = io.BytesIO()
+            Image.new(mode, (8, 8)).save(out, "PNG")
+            with Image.open(io.BytesIO(PillowImages().to_webp(out.getvalue()))) as image:
+                assert image.mode in ("RGB", "RGBA")
+
+    def test_refuses_unreadable_bytes(self) -> None:
+        with pytest.raises(UnsupportedFileError):
+            PillowImages().to_webp(PNG)
+
+
 class TestUseCases:
     async def test_upload_stores_object_and_row(
         self, uc: FilesUseCases, storage: FakeStorage
@@ -98,6 +164,27 @@ class TestUseCases:
         assert public.url == f"https://files.test/{stored.key}"
         assert storage.objects[stored.key] == (PDF, "application/pdf", "my cv.pdf")
         assert [f.file.id for f in await uc.list()] == [stored.id]
+
+    async def test_photos_are_reencoded_and_duplicates_reused(
+        self, uc: FilesUseCases, storage: FakeStorage
+    ) -> None:
+        first = await uc.upload("IMG_7411.HEIC", b"\x00\x00\x00\x18ftypheic" + b"x" * 20)
+        assert (first.file.content_type, first.file.filename) == ("image/webp", "IMG_7411.webp")
+        assert first.file.key.endswith(".webp")
+        again = await uc.upload("copy.heic", b"\x00\x00\x00\x18ftypheic" + b"x" * 20)
+        assert again.file.id == first.file.id
+        assert len(storage.objects) == 1
+        with pytest.raises(UnsupportedFileError):
+            await uc.upload("bad.png", PNG + b"broken")
+
+    async def test_geojson_is_checked(self, uc: FilesUseCases) -> None:
+        layer = await uc.upload("streets.json", b'{"type": "FeatureCollection", "features": []}')
+        assert (layer.file.content_type, layer.file.filename) == (
+            "application/geo+json",
+            "streets.geojson",
+        )
+        with pytest.raises(UnsupportedFileError):
+            await uc.upload("x.json", b'{"type": "Topology"}')
 
     async def test_upload_limits(self, uc: FilesUseCases) -> None:
         with pytest.raises(FileTooLargeError):

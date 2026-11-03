@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from portfolio.bootstrap import Container, build_container
+from portfolio.contexts.assistant.interfaces import http as assistant_http
 from portfolio.contexts.contacts.domain.model import ContactsError
 from portfolio.contexts.contacts.interfaces import http as contacts_http
 from portfolio.contexts.content.domain.errors import ContentError
@@ -74,6 +75,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.state.catalog = container.catalog
     app.state.links = links
     app.state.search = container.search
+    app.state.assistant = container.assistant
     app.state.files = container.files
     app.state.contacts = container.contacts
     app.state.auth_cookie = container.auth_cookie
@@ -107,6 +109,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.include_router(catalog_http.router)
     app.include_router(catalog_http.documents_router)
     app.include_router(search_http.router)
+    app.include_router(assistant_http.router)
     app.include_router(contacts_http.public_router)
     app.include_router(content_http.router, dependencies=ADMIN_ONLY)
     app.include_router(files_http.router, dependencies=ADMIN_ONLY)

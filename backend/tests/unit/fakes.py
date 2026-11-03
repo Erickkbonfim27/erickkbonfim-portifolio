@@ -52,7 +52,7 @@ from portfolio.contexts.files.application.use_cases import (
     ListFiles,
     UploadFile,
 )
-from portfolio.contexts.files.domain.model import FileInUseError, StoredFile
+from portfolio.contexts.files.domain.model import FileInUseError, StoredFile, UnsupportedFileError
 from tests.unit.identity.fakes import FixedClock
 
 
@@ -208,6 +208,9 @@ class InMemoryFiles:
     async def list(self) -> list[StoredFile]:
         return sorted(self._staged.values(), key=lambda f: f.created_at, reverse=True)
 
+    async def find_by_sha256(self, sha256: str) -> StoredFile | None:
+        return next((f for f in self._staged.values() if f.sha256 == sha256), None)
+
     async def add(self, stored: StoredFile) -> None:
         self._staged[stored.id] = stored
 
@@ -246,12 +249,21 @@ class FakeStorage:
         return f"https://files.test/{key}"
 
 
+class FakeImages:
+    """Marks the bytes instead of decoding them; PillowImages has its own tests."""
+
+    def to_webp(self, data: bytes) -> bytes:
+        if data.endswith(b"broken"):
+            raise UnsupportedFileError("the image could not be read")
+        return b"RIFF\x00\x00\x00\x00WEBP" + data
+
+
 def files_use_cases(store: FilesStore, storage: FakeStorage, clock: FixedClock) -> FilesUseCases:
     def uow() -> InMemoryFilesUoW:
         return InMemoryFilesUoW(store)
 
     return FilesUseCases(
-        upload=UploadFile(uow, storage, clock),
+        upload=UploadFile(uow, storage, clock, FakeImages()),
         list=ListFiles(uow, storage),
         describe=DescribeFiles(uow, storage),
         delete=DeleteFile(uow, storage),

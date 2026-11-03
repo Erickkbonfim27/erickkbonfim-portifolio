@@ -1,10 +1,4 @@
-const LOOP = [
-  { idx: "01", st: "Define", sd: "Agree on the problem and how we'll measure it." },
-  { idx: "02", st: "Prototype", sd: "Build the smallest version that works on real data." },
-  { idx: "03", st: "Trace", sd: "Add tracing before adding features." },
-  { idx: "04", st: "Evaluate", sd: "Test changes against an eval set before release." },
-  { idx: "05", st: "Ship", sd: "Deploy with infrastructure as code, then repeat." },
-];
+import { useI18n } from "../i18n";
 
 const svg = {
   width: 22,
@@ -18,30 +12,34 @@ const svg = {
 } as const;
 
 export function Approach() {
+  const { t } = useI18n();
+  const a = t.approach;
+  const [rls, evals, vectors, sales] = a.principles;
   return (
     <section id="approach" className="sec" aria-labelledby="approach-title">
       <div className="wrap">
         <div className="shead reveal">
           <div className="l">
             <p className="eyebrow mono">
-              <span className="n">02</span>How I work
+              <span className="n">02</span>
+              {a.eyebrow}
             </p>
             <h2 id="approach-title" className="h2">
-              How I think about agents
+              {a.title}
             </h2>
           </div>
-          <p className="r">The steps I follow, and a few opinions I picked up shipping agents at Vizzion and Loopia.</p>
+          <p className="r">{a.intro}</p>
         </div>
         <div className="bento">
           <div className="card flow s12 reveal">
             <div className="card-top">
-              <span className="label mono">Process</span>
-              <span className="mono" style={{ fontSize: 11.5, color: "#5F6670" }}>
-                for each feature
+              <span className="label mono">{a.process}</span>
+              <span className="mono" style={{ fontSize: 11.5, color: "var(--ink3)" }}>
+                {a.perFeature}
               </span>
             </div>
-            <ol className="loop" aria-label="Build loop">
-              {LOOP.map((step) => (
+            <ol className="loop" aria-label={a.loopLabel}>
+              {a.loop.map((step) => (
                 <li key={step.idx} className="stg">
                   <span className="idx mono">{step.idx}</span>
                   <span className="st">{step.st}</span>
@@ -50,7 +48,7 @@ export function Approach() {
               ))}
             </ol>
             <div className="loopback" aria-hidden="true">
-              <span className="mono">REPEAT</span>
+              <span className="mono">{a.repeat}</span>
             </div>
           </div>
 
@@ -61,12 +59,9 @@ export function Approach() {
                 <path d="m9 12 2 2 4-4" />
               </svg>
             </span>
-            <h3 className="ptitle">The model only sees what the user can see.</h3>
-            <p className="ptext">
-              At Vizzion, agent tools queried Postgres through Row-Level Security. If a user couldn't read a row, the
-              agent working for them couldn't either.
-            </p>
-            <p className="pfoot mono">LEARNED AT VIZZION</p>
+            <h3 className="ptitle">{rls.title}</h3>
+            <p className="ptext">{rls.text}</p>
+            <p className="pfoot mono">{rls.foot}</p>
           </article>
           <article className="card pcard s3 reveal">
             <span className="pic" aria-hidden="true">
@@ -75,12 +70,9 @@ export function Approach() {
                 <path d="m8 12 3 3 5-6" />
               </svg>
             </span>
-            <h3 className="ptitle">No eval set, no prompt changes.</h3>
-            <p className="ptext">
-              Changing a prompt without examples to compare against is guessing. I build the eval set first, even if it
-              starts as a small spreadsheet.
-            </p>
-            <p className="pfoot mono">LANGFUSE · LANGSMITH</p>
+            <h3 className="ptitle">{evals.title}</h3>
+            <p className="ptext">{evals.text}</p>
+            <p className="pfoot mono">{evals.foot}</p>
           </article>
           <article className="card pcard s3 reveal">
             <span className="pic" aria-hidden="true">
@@ -89,12 +81,9 @@ export function Approach() {
                 <path d="m3 13 9 5 9-5" />
               </svg>
             </span>
-            <h3 className="ptitle">Product search needs both kinds of vectors.</h3>
-            <p className="ptext">
-              Customers type SKUs and brand names, and dense vectors are bad at exact matches. At Loopia the index
-              combines dense and sparse.
-            </p>
-            <p className="pfoot mono">LEARNED AT LOOPIA</p>
+            <h3 className="ptitle">{vectors.title}</h3>
+            <p className="ptext">{vectors.text}</p>
+            <p className="pfoot mono">{vectors.foot}</p>
           </article>
           <article className="card dark pcard s3 reveal">
             <span className="pic" aria-hidden="true">
@@ -105,9 +94,9 @@ export function Approach() {
                 <path d="M12 16v1.5" />
               </svg>
             </span>
-            <h3 className="ptitle">Ask who pays for it first.</h3>
-            <p className="ptext">Four years in sales taught me to ask that before I ask which model to use.</p>
-            <p className="pfoot mono">LEARNED AT GRUPO MELLO</p>
+            <h3 className="ptitle">{sales.title}</h3>
+            <p className="ptext">{sales.text}</p>
+            <p className="pfoot mono">{sales.foot}</p>
           </article>
         </div>
       </div>

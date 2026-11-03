@@ -1,16 +1,18 @@
 import { Layout } from "../components/Layout";
 import { Link } from "../components/Link";
+import { useI18n } from "../i18n";
 
 export function NotFoundContent() {
+  const { t, to } = useI18n();
   return (
     <div id="top" className="wrap case">
       <div className="card case-head">
         <span className="label mono">404</span>
-        <h1 className="case-title">Nothing here.</h1>
-        <p className="case-summary">The page you followed doesn't exist, or it moved.</p>
+        <h1 className="case-title">{t.notFound.title}</h1>
+        <p className="case-summary">{t.notFound.text}</p>
         <div className="case-actions">
-          <Link className="pillbtn pill-dark" to="/">
-            Back to the portfolio
+          <Link className="pillbtn pill-dark" to={to("/")}>
+            {t.notFound.back}
           </Link>
         </div>
       </div>
@@ -19,8 +21,9 @@ export function NotFoundContent() {
 }
 
 export function NotFound() {
+  const { t } = useI18n();
   return (
-    <Layout base="/" cv={null}>
+    <Layout onHome={false} cv={null} title={t.titles.notFound}>
       <NotFoundContent />
     </Layout>
   );

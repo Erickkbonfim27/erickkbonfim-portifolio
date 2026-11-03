@@ -1,7 +1,6 @@
-import type { ContactAccepted, ContactRequest, Entry, Lang, Profile, Skill } from "./types";
+import type { AgentEvent, ChatTurn, ContactAccepted, ContactRequest, Entry, Explained, Lang, Profile, Skill } from "./types";
 
 export const DEFAULT_TIMEOUT_MS = 8000;
-export const LANG: Lang = "en";
 
 export type ApiErrorKind = "not_found" | "rate_limited" | "invalid" | "http" | "network" | "timeout" | "aborted";
 
@@ -97,22 +96,25 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 }
 
-function withLang(path: string, params: Record<string, string> = {}): string {
-  const query = new URLSearchParams({ lang: LANG, ...params });
-  return `${path}?${query.toString()}`;
+function withLang(path: string, lang: Lang, params: Record<string, string> = {}): string {
+  return `${path}?${new URLSearchParams({ ...params, lang }).toString()}`;
 }
 
 type Opts = Pick<RequestOptions, "signal" | "timeoutMs">;
 
 export const api = {
-  profile: (o?: Opts) => request<Profile>(withLang("/api/profile"), o),
-  experience: (o?: Opts) => request<Entry[]>(withLang("/api/experience"), o),
-  education: (o?: Opts) => request<Entry[]>(withLang("/api/education"), o),
-  certificates: (o?: Opts) => request<Entry[]>(withLang("/api/certificates"), o),
-  studies: (o?: Opts) => request<Entry[]>(withLang("/api/studies"), o),
-  skills: (o?: Opts) => request<Skill[]>(withLang("/api/skills"), o),
-  project: (slug: string, o?: Opts) =>
-    request<Entry>(withLang(`/api/projects/${encodeURIComponent(slug)}`), o),
+  profile: (lang: Lang, o?: Opts) => request<Profile>(withLang("/api/profile", lang), o),
+  experience: (lang: Lang, o?: Opts) => request<Entry[]>(withLang("/api/experience", lang), o),
+  education: (lang: Lang, o?: Opts) => request<Entry[]>(withLang("/api/education", lang), o),
+  certificates: (lang: Lang, o?: Opts) => request<Entry[]>(withLang("/api/certificates", lang), o),
+  studies: (lang: Lang, o?: Opts) => request<Entry[]>(withLang("/api/studies", lang), o),
+  skills: (lang: Lang, o?: Opts) => request<Skill[]>(withLang("/api/skills", lang), o),
+  project: (slug: string, lang: Lang, o?: Opts) =>
+    request<Entry>(withLang(`/api/projects/${encodeURIComponent(slug)}`, lang), o),
+  projects: (lang: Lang, o?: Opts) => request<Entry[]>(withLang("/api/projects", lang), o),
+  writing: (slug: string, lang: Lang, o?: Opts) =>
+    request<Entry>(withLang(`/api/writing/${encodeURIComponent(slug)}`, lang), o),
+  explain: (q: string, lang: Lang, o?: Opts) => request<Explained>(withLang("/api/search/explain", lang, { q }), o),
   contact: (body: ContactRequest, idempotencyKey: string, o?: Opts) =>
     request<ContactAccepted>("/api/contact", {
       ...o,
@@ -121,3 +123,42 @@ export const api = {
       headers: { "Idempotency-Key": idempotencyKey },
     }),
 };
+
+/** Ask the site's agent. Each Server-Sent Event is handed to `onEvent` as it arrives. */
+export async function streamChat(
+  body: { message: string; history: ChatTurn[]; lang: Lang },
+  onEvent: (event: AgentEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase()}/api/chat`, {
+      method: "POST",
+      headers: { Accept: "text/event-stream", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: signal ?? null,
+    });
+  } catch {
+    throw new ApiError(signal?.aborted ? "aborted" : "network");
+  }
+  if (!response.ok || !response.body) {
+    throw new ApiError(kindForStatus(response.status), response.status, await readDetail(response));
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: true });
+    let end = buffer.indexOf("\n\n");
+    while (end >= 0) {
+      const block = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+      const kind = /^event: (\w+)/m.exec(block)?.[1];
+      const data = /^data: (.*)$/m.exec(block)?.[1];
+      if (kind && data) onEvent({ kind, data: JSON.parse(data) } as AgentEvent);
+      end = buffer.indexOf("\n\n");
+    }
+    if (done) return;
+  }
+}

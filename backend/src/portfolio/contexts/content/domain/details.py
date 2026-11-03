@@ -59,7 +59,7 @@ SCHEMAS: dict[Kind, tuple[Field, ...]] = {
         Field("collection", "choice", required=True, choices=("portfolio", "lab")),
         Field("organization", "text"),
         *_PERIOD,
-        Field("state", "choice", choices=("active", "standby", "shipped", "archived")),
+        Field("state", "choice", choices=("active", "building", "standby", "shipped", "archived")),
         Field("links", "links"),
     ),
     Kind.EDUCATION: (

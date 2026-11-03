@@ -3,12 +3,14 @@ import { api } from "../api/client";
 import type { Entry, Profile } from "../api/types";
 import { Approach } from "../components/Approach";
 import { Contact } from "../components/Contact";
+import { Ecosystem } from "../components/Ecosystem";
 import { Experience } from "../components/Experience";
 import { Hero } from "../components/Hero";
 import { Layout } from "../components/Layout";
 import { Outside } from "../components/Outside";
 import { Stack } from "../components/Stack";
 import { Work, type WorkEntries } from "../components/Work";
+import { useI18n } from "../i18n";
 import { cvAttachment, experienceRows, learningCards, stackGroups } from "../lib/derive";
 import { useApi } from "../lib/useApi";
 
@@ -18,19 +20,21 @@ function orNull<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 export function Home() {
-  const profile = useApi<Profile | null>("profile", (signal) => orNull(api.profile({ signal })));
-  const experience = useApi<Entry[] | null>("experience", (signal) => orNull(api.experience({ signal })));
-  const learning = useApi("learning", (signal) =>
+  const { lang, t } = useI18n();
+  const profile = useApi<Profile | null>(`profile:${lang}`, (signal) => orNull(api.profile(lang, { signal })));
+  const experience = useApi<Entry[] | null>(`experience:${lang}`, (signal) => orNull(api.experience(lang, { signal })));
+  const learning = useApi(`learning:${lang}`, (signal) =>
     Promise.all([
-      orNull(api.education({ signal })),
-      orNull(api.certificates({ signal })),
-      orNull(api.studies({ signal })),
+      orNull(api.education(lang, { signal })),
+      orNull(api.certificates(lang, { signal })),
+      orNull(api.studies(lang, { signal })),
     ]),
   );
-  const skills = useApi("skills", (signal) => orNull(api.skills({ signal })));
-  const work = useApi<WorkEntries>("work", async (signal) => {
-    const slugs = ["vizzion", "vizzion-data-platform", "loopia", "rhye"] as const;
-    const entries = await Promise.all(slugs.map((slug) => orNull(api.project(slug, { signal }))));
+  const skills = useApi(`skills:${lang}`, (signal) => orNull(api.skills(lang, { signal })));
+  const ecosystem = useApi<Entry | null>(`ecosystem:${lang}`, (signal) => orNull(api.writing("ecosystem", lang, { signal })));
+  const work = useApi<WorkEntries>(`work:${lang}`, async (signal) => {
+    const slugs = ["vizzion", "vizzion-data-platform", "loopia", "rhye", "silpi", "reuni-challenge"] as const;
+    const entries = await Promise.all(slugs.map((slug) => orNull(api.project(slug, lang, { signal }))));
     return Object.fromEntries(slugs.map((slug, index) => [slug, entries[index] ?? null]));
   });
 
@@ -44,12 +48,13 @@ export function Home() {
   const [education, certificates, studies] = learning.data ?? [null, null, null];
 
   return (
-    <Layout base="" cv={cv}>
+    <Layout onHome cv={cv} title={t.titles.home}>
       <Hero availability={profile.data?.availability ?? null} cv={cv} />
       <Work entries={work.data ?? {}} />
+      <Ecosystem entry={ecosystem.data ?? null} />
       <Approach />
-      <Experience rows={experienceRows(experience.data)} learning={learningCards(education, certificates, studies)} />
-      <Stack groups={stackGroups(skills.data)} />
+      <Experience rows={experienceRows(experience.data, lang)} learning={learningCards(education, certificates, studies, undefined, lang)} />
+      <Stack groups={stackGroups(skills.data, lang)} />
       <Outside />
       <Contact cv={cv} />
     </Layout>

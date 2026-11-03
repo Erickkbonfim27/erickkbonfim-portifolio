@@ -2,7 +2,7 @@
 # Environment (set on the Easypanel service, read when Caddy starts):
 #   PORT          port to listen on (Easypanel sets it; 3000 by default)
 #   API_ORIGIN    the API, e.g. https://api.yourdomain.dev  (CSP connect-src + proxy target)
-#   FILES_ORIGIN  where uploaded files live, e.g. https://minio.yourdomain.dev  (CSP img-src)
+#   FILES_ORIGIN  where uploaded files live, e.g. https://minio.yourdomain.dev  (CSP img-src, connect-src for map layers)
 {
 	admin off
 	auto_https off
@@ -28,7 +28,7 @@
 	}
 
 	header {
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: {$FILES_ORIGIN:}; connect-src 'self' {$API_ORIGIN:http://localhost:8000}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: {$FILES_ORIGIN:}; connect-src 'self' {$API_ORIGIN:http://localhost:8000} {$FILES_ORIGIN:}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"

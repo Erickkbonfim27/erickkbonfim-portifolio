@@ -31,6 +31,7 @@ type Entry = {
   tags: string[];
   details: Record<string, unknown>;  // kind-specific, see below
   body_html: string;      // sanitized HTML rendered on the server ("" when empty)
+  body: Segment[];        // the same body in order: HTML runs and structured blocks
   skills: SkillRef[];
   attachments: Attachment[];
   published_at: string;   // ISO 8601
@@ -38,12 +39,20 @@ type Entry = {
 };
 ```
 
+`body` keeps the order of the document: `{ type: "html", html }` runs between
+`{ type: "block", kind, data }` blocks. Kinds: `facts`, `metrics`, `gallery`,
+`timeline` (`list` or `roadbook`), `diagram` (nodes, groups, edges and the steps that
+walk through them), `logos`, `cases`, `quote` and `map` (a GeoJSON layer of our own
+storage). Their schemas are in `backend/src/portfolio/contexts/content/domain/blocks.py`.
+Images that are not in our storage, and hidden blocks, never reach the API.
+`body_html` renders the blocks as plain HTML, for readers without components.
+
 `details` by kind (every field optional unless marked):
 
 | kind | fields |
 |---|---|
 | experience | `organization`*, `location`, `start`* (YYYY-MM), `end` (YYYY-MM, absent = current), `url`, `employment` |
-| project | `collection`* (`portfolio` \| `lab`), `organization`, `start`, `end`, `state` (`active` \| `standby` \| `shipped` \| `archived`), `links`: Link[] |
+| project | `collection`* (`portfolio` \| `lab`), `organization`, `start`, `end`, `state` (`active` \| `building` \| `standby` \| `shipped` \| `archived`), `links`: Link[] |
 | education | `institution`*, `start`, `end`, `url` |
 | certificate | `issuer`*, `issued` (YYYY-MM), `url` |
 | study | `medium`* (`book` \| `course` \| `paper` \| `topic`), `author`, `url`, `progress` (`planned` \| `in_progress` \| `done`) |
@@ -67,6 +76,7 @@ Lists are ordered by the position set in the admin, then most recent first.
 | `GET /api/writing/{slug}` | `Entry` |
 | `GET /api/skills` | `Skill[]` |
 | `GET /api/search?q=…&lang=&limit=&kind=` | `Hit[]`: hybrid search over published content (`limit` 1–20, default 5) |
+| `GET /api/search/explain?q=…&lang=&limit=` | the same search step by step: `{ query, hits, dense, sparse, steps: {name, ms}[], degraded }` (`limit` default 3) |
 | `GET /api/resume.json` | the CV in the [JSON Resume](https://jsonresume.org/schema) format |
 | `POST /api/contact` | `202 { id }`, see below |
 | `GET /AGENTS.md` | a brief for AI agents (markdown) |

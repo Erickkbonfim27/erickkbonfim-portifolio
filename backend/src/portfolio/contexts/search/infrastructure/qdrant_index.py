@@ -5,6 +5,7 @@ Qdrant (Query API), so neither score scale has to be calibrated against the othe
 """
 
 from collections.abc import Sequence
+from typing import Literal
 from uuid import UUID
 
 from qdrant_client import AsyncQdrantClient, models
@@ -125,16 +126,37 @@ class QdrantIndex:
                 query=models.FusionQuery(fusion=models.Fusion.RRF),
                 limit=query.limit,
             )
-        return [
-            SearchHit(
-                entry_id=UUID(str(payload["entry_id"])),
-                kind=str(payload["kind"]),
-                slug=str(payload["slug"]),
-                title=str(payload["title"]),
-                heading=str(payload["heading"]),
-                text=str(payload["text"]),
-                score=point.score,
-            )
-            for point in response.points
-            if (payload := point.payload) is not None
-        ]
+        return _hits(response.points)
+
+    async def rank(
+        self,
+        query: SearchQuery,
+        using: Literal["dense", "sparse"],
+        vector: DenseVector | SparseVector,
+    ) -> list[SearchHit]:
+        if not await self._client.collection_exists(self._collection):
+            return []
+        response = await self._client.query_points(
+            self._collection,
+            query=_sparse(vector) if isinstance(vector, SparseVector) else list(vector),
+            using=SPARSE if using == "sparse" else DENSE,
+            query_filter=_filter(query),
+            limit=query.limit,
+        )
+        return _hits(response.points)
+
+
+def _hits(points: Sequence[models.ScoredPoint]) -> list[SearchHit]:
+    return [
+        SearchHit(
+            entry_id=UUID(str(payload["entry_id"])),
+            kind=str(payload["kind"]),
+            slug=str(payload["slug"]),
+            title=str(payload["title"]),
+            heading=str(payload["heading"]),
+            text=str(payload["text"]),
+            score=point.score,
+        )
+        for point in points
+        if (payload := point.payload) is not None
+    ]

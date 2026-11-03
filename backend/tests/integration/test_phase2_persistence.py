@@ -155,6 +155,8 @@ async def test_attachment_foreign_key(session_factory: Factory) -> None:
     async with SqlFilesUnitOfWork(session_factory) as uow:
         assert await uow.files.get(stored.id) == stored
         assert [f.id for f in await uow.files.list()] == [stored.id]
+        assert await uow.files.find_by_sha256(stored.sha256) == stored
+        assert await uow.files.find_by_sha256("0" * 64) is None
         await uow.files.delete(stored.id)
         with pytest.raises(FileInUseError):
             await uow.commit()

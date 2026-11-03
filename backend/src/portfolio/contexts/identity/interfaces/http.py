@@ -78,6 +78,9 @@ async def login(body: LoginBody, response: Response, use_cases: UseCases, cookie
     response.set_cookie(
         cookie.name,
         result.token,
+        # Max-Age wins over Expires and is relative, so a browser with a wrong clock
+        # keeps the session for its real lifetime.
+        max_age=result.lifetime_seconds,
         expires=result.expires_at,
         path="/",
         domain=cookie.domain,

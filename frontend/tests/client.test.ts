@@ -20,15 +20,16 @@ describe("apiBase", () => {
 describe("request", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("returns parsed JSON and asks for the English content", async () => {
-    const { calls } = mockFetch({ "/api/experience": [{ slug: "loopia" }] });
-    await expect(api.experience()).resolves.toEqual([{ slug: "loopia" }]);
-    expect(calls[0]?.url.searchParams.get("lang")).toBe("en");
+  it("returns parsed JSON in the language asked for", async () => {
+    const { calls } = mockFetch({ "/api/experience": [{ slug: "loopia" }], "/api/projects/rhye": { slug: "rhye" } });
+    await expect(api.experience("en")).resolves.toEqual([{ slug: "loopia" }]);
+    await api.project("rhye", "pt");
+    expect(calls.map((call) => call.url.searchParams.get("lang"))).toEqual(["en", "pt"]);
   });
 
   it("maps 404 to not_found", async () => {
     mockFetch({});
-    await expect(api.project("nope")).rejects.toMatchObject({ kind: "not_found", status: 404 });
+    await expect(api.project("nope", "en")).rejects.toMatchObject({ kind: "not_found", status: 404 });
   });
 
   it("keeps a plain-string detail and drops validation lists", async () => {

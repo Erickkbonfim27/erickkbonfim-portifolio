@@ -15,7 +15,10 @@ dependencies = [
     "fastapi>=0.162.0",
     "fastembed>=0.9.1",
     "httpx>=0.28.1",
+    "langgraph>=0.6",
     "mcp>=2.3.0",
+    "pillow>=11",
+    "pillow-heif>=1.1",
     "pydantic>=2.14.2",
     "pydantic-settings>=2.16.2",
     "python-multipart>=0.0.33",
@@ -92,24 +95,24 @@ include_external_packages = true
 [[tool.importlinter.contracts]]
 name = "Contexts are independent"
 type = "independence"
-modules = ["portfolio.contexts.identity", "portfolio.contexts.content", "portfolio.contexts.files", "portfolio.contexts.contacts", "portfolio.contexts.ops"]
+modules = ["portfolio.contexts.identity", "portfolio.contexts.content", "portfolio.contexts.files", "portfolio.contexts.contacts", "portfolio.contexts.ops", "portfolio.contexts.assistant"]
 
 [[tool.importlinter.contracts]]
 name = "Hexagonal layers"
 type = "layers"
-containers = ["portfolio.contexts.identity", "portfolio.contexts.content", "portfolio.contexts.files", "portfolio.contexts.contacts"]
+containers = ["portfolio.contexts.identity", "portfolio.contexts.content", "portfolio.contexts.files", "portfolio.contexts.contacts", "portfolio.contexts.assistant"]
 layers = ["interfaces | infrastructure", "application", "domain"]
 
 [[tool.importlinter.contracts]]
 name = "Domain is framework-free"
 type = "forbidden"
-source_modules = ["portfolio.contexts.identity.domain", "portfolio.contexts.content.domain", "portfolio.contexts.files.domain", "portfolio.contexts.contacts.domain", "portfolio.kernel"]
+source_modules = ["portfolio.contexts.identity.domain", "portfolio.contexts.content.domain", "portfolio.contexts.files.domain", "portfolio.contexts.contacts.domain", "portfolio.contexts.assistant.domain", "portfolio.kernel"]
 forbidden_modules = ["fastapi", "sqlalchemy", "pydantic", "argon2", "alembic", "aio_pika", "boto3", "httpx", "portfolio.platform"]
 allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
 name = "Application depends only on domain and ports"
 type = "forbidden"
-source_modules = ["portfolio.contexts.identity.application", "portfolio.contexts.content.application", "portfolio.contexts.files.application", "portfolio.contexts.contacts.application"]
+source_modules = ["portfolio.contexts.identity.application", "portfolio.contexts.content.application", "portfolio.contexts.files.application", "portfolio.contexts.contacts.application", "portfolio.contexts.assistant.application"]
 forbidden_modules = ["fastapi", "sqlalchemy", "argon2", "aio_pika", "boto3", "httpx", "portfolio.platform"]
 allow_indirect_imports = true

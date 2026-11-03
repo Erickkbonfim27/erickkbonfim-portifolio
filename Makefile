@@ -7,7 +7,7 @@ ENV_FILE := $(if $(wildcard .env),--env-file ../.env,)
 RUN := cd $(BACKEND) && uv run $(ENV_FILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev-api dev-worker dev-web build-web check-web migrate migration create-admin setup-storage reindex seed test test-unit cov lint format typecheck imports runtime check
+.PHONY: help install dev-api dev-worker dev-web build-web check-web migrate migration create-admin setup-storage reindex seed eval test test-unit cov lint format typecheck imports runtime check
 
 help: ## List the commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -49,6 +49,9 @@ seed: ## Create, update and publish content from TOML files (SEED=documentos/see
 
 reindex: ## Rebuild the search index (Qdrant) from published content
 	$(RUN) portfolio reindex
+
+eval: ## Agent evals: dataset → agent → scores in Langfuse; fails below the gate (ONLY="pt-cto en-who")
+	$(RUN) portfolio eval evals/assistant.jsonl $(if $(ONLY),--only $(ONLY),)
 
 test: ## All tests (integration ones need TEST_DATABASE_ADMIN_URL)
 	$(RUN) pytest

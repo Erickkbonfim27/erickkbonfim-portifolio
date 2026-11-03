@@ -1,4 +1,5 @@
 import type { ExperienceRow, LearningCard } from "../content/fallback";
+import { useI18n } from "../i18n";
 
 interface ExperienceProps {
   rows: ExperienceRow[];
@@ -6,19 +7,21 @@ interface ExperienceProps {
 }
 
 export function Experience({ rows, learning }: ExperienceProps) {
+  const { t } = useI18n();
   return (
     <section id="experience" className="sec" aria-labelledby="xp-title">
       <div className="wrap">
         <div className="shead reveal">
           <div className="l">
             <p className="eyebrow mono">
-              <span className="n">03</span>Experience
+              <span className="n">03</span>
+              {t.experience.eyebrow}
             </p>
             <h2 id="xp-title" className="h2">
-              Where I've worked
+              {t.experience.title}
             </h2>
           </div>
-          <p className="r">Most recent first. The sales years stay on the list on purpose.</p>
+          <p className="r">{t.experience.intro}</p>
         </div>
         <div className="bento">
           <div className="card s12 reveal" style={{ overflow: "hidden" }}>
@@ -34,7 +37,10 @@ export function Experience({ rows, learning }: ExperienceProps) {
                     {row.company}
                     <span className="role">{row.role}</span>
                   </h3>
-                  <p className="desc">{row.desc}</p>
+                  <p className="desc">
+                    {row.flag && <span className="tag mono xp-flag">{row.flag}</span>}
+                    {row.desc}
+                  </p>
                 </li>
               ))}
             </ol>

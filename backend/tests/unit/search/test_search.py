@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Iterable
+from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
@@ -9,6 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from portfolio.contexts.content.domain import richtext
 from portfolio.contexts.content.domain.entry import EntryDraft, Translation
 from portfolio.contexts.content.domain.kinds import Kind, Lang
+from portfolio.contexts.search.application.ports import SearchRun
 from portfolio.contexts.search.domain.model import (
     MAX_CHUNK_CHARS,
     InvalidQueryError,
@@ -183,6 +185,52 @@ class TestIndexAndSearch:
         [hit, *_] = await search.search(SearchQuery.build("Loopia", "en", 3))
         assert hit.slug == "loopia"
 
+    async def test_explain_shows_each_ranking_and_every_step(self, world: World) -> None:
+        search = world.search()
+        assert (await search.search.explain(SearchQuery.build("Loopia"))).hits == []
+        await search.reindex()
+        found = await search.search.explain(SearchQuery.build("Software Engineer Loopia", "en", 3))
+        assert found.hits[0].slug == "loopia"
+        assert found.dense
+        assert found.sparse[0].slug == "loopia"
+        assert [name for name, _ in found.steps] == [
+            "bm25.encode",
+            "dense.encode",
+            "dense.search",
+            "bm25.search",
+            "rrf.fuse",
+        ]
+        assert all(ms >= 0 for _, ms in found.steps)
+        assert not found.degraded
+        world.dense.fail = True
+        degraded = await search.search.explain(SearchQuery.build("Loopia", "en", 3))
+        assert degraded.degraded
+        assert degraded.dense == []
+        assert "dense.search" not in [name for name, _ in degraded.steps]
+        assert degraded.hits[0].slug == "loopia"
+
+    async def test_every_search_is_handed_to_the_tracer(self, world: World) -> None:
+        runs: list[SearchRun] = []
+
+        class Recorder:
+            def record(self, run: SearchRun) -> None:
+                runs.append(run)
+
+        await world.search().reindex()
+        search = replace(world.search().search, tracer=Recorder())
+        await search(SearchQuery.build("Loopia", "en", 3))
+        await search.explain(SearchQuery.build("Loopia", "en", 3))
+        assert [run.name for run in runs] == ["search", "search.explain"]
+        assert [step.name for step in runs[0].steps] == [
+            "bm25.encode",
+            "dense.encode",
+            "hybrid.search",
+        ]
+        assert runs[1].steps[-1].name == "rrf.fuse"
+        assert runs[1].steps[1].start_ms >= runs[1].steps[0].start_ms
+        assert runs[0].hits[0].slug == "loopia"
+        assert runs[0].started_at.tzinfo is not None
+
     async def test_index_entry_follows_the_database(self, world: World) -> None:
         search, content = world.search(), world.container().content
         await search.reindex()
@@ -266,6 +314,16 @@ class TestHttp:
         [hit, *_] = response.json()
         assert (hit["slug"], hit["kind"]) == ("loopia", "experience")
         assert "cache-control" not in response.headers
+
+    async def test_explain_endpoint(self, client: AsyncClient) -> None:
+        response = await client.get("/api/search/explain", params={"q": " Loopia ", "lang": "en"})
+        body = response.json()
+        assert body["query"] == "Loopia"
+        assert body["hits"][0]["slug"] == "loopia"
+        assert set(body["sparse"][0]) == {"slug", "title", "heading", "score"}
+        assert [step["name"] for step in body["steps"]][-1] == "rrf.fuse"
+        assert body["degraded"] is False
+        assert (await client.get("/api/search/explain", params={"q": ""})).status_code == 422
 
     async def test_invalid_queries(self, client: AsyncClient) -> None:
         assert (await client.get("/api/search", params={"q": ""})).status_code == 422

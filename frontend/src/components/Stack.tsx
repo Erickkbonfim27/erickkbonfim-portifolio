@@ -1,19 +1,22 @@
 import type { StackGroup } from "../content/fallback";
+import { useI18n } from "../i18n";
 
 export function Stack({ groups }: { groups: StackGroup[] }) {
+  const { t } = useI18n();
   return (
     <section id="stack" className="sec" aria-labelledby="stack-title">
       <div className="wrap">
         <div className="shead reveal">
           <div className="l">
             <p className="eyebrow mono">
-              <span className="n">04</span>Stack
+              <span className="n">04</span>
+              {t.stack.eyebrow}
             </p>
             <h2 id="stack-title" className="h2">
-              Tools I use
+              {t.stack.title}
             </h2>
           </div>
-          <p className="r">Used in production or in my own projects. The full course list is further down, and it's long.</p>
+          <p className="r">{t.stack.intro}</p>
         </div>
         <div className="bento">
           {groups.map((group) => (

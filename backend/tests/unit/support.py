@@ -6,7 +6,9 @@ from fastapi import FastAPI
 from qdrant_client import AsyncQdrantClient
 
 from portfolio.bootstrap import Container
-from portfolio.bridges import ContentSourceCatalog
+from portfolio.bridges import ContentSourceCatalog, SiteKnowledge
+from portfolio.contexts.assistant.application.agent import Agent
+from portfolio.contexts.assistant.interfaces.http import Assistant, DailySpend
 from portfolio.contexts.content.application.catalog import IndexFeed
 from portfolio.contexts.identity.interfaces.http import AuthCookie
 from portfolio.contexts.search.application.use_cases import (
@@ -19,6 +21,7 @@ from portfolio.contexts.search.application.use_cases import (
 from portfolio.contexts.search.infrastructure.qdrant_index import QdrantIndex
 from portfolio.main import create_app
 from portfolio.platform.settings import Settings
+from tests.unit.assistant.fakes import ScriptedModel
 from tests.unit.fakes import (
     ContactsStore,
     ContentStore,
@@ -74,6 +77,7 @@ class World:
     contacts: ContactsStore
     limiter: FakeLimiter
     closer: Closer
+    model: ScriptedModel = field(default_factory=ScriptedModel)
     dense: HashingDense = field(default_factory=HashingDense)
     sparse: HashingSparse = field(default_factory=HashingSparse)
     # Qdrant's local mode: the real adapter and real query API, in memory.
@@ -97,11 +101,18 @@ class World:
     def container(self) -> Container:
         clock = self.identity.clock
         files = files_use_cases(self.files, self.storage, clock)
+        catalog = content_catalog(self.content, files)
+        search = self.search().search
         return Container(
             identity=self.identity.use_cases,
             content=content_use_cases(self.content, clock),
-            catalog=content_catalog(self.content, files),
-            search=self.search().search,
+            catalog=catalog,
+            search=search,
+            assistant=Assistant(
+                Agent(self.model, SiteKnowledge(search, catalog)),
+                self.limiter,
+                DailySpend(0.5),
+            ),
             files=files,
             contacts=contacts_use_cases(self.contacts, self.limiter, clock),
             auth_cookie=AuthCookie(name=COOKIE, secure=True, domain=None),
