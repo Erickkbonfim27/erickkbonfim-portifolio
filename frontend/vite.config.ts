@@ -7,6 +7,8 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: false,
+    // Small fonts would be inlined as data: URIs, which the CSP's font-src 'self' refuses.
+    assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),
   },
   test: {
     environment: "jsdom",
