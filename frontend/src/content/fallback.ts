@@ -83,7 +83,7 @@ const en: Fallback = {
       now: false,
       company: "Vizzion",
       role: "Co-founder & CTO",
-      desc: "Real-estate and urban-planning analysis using ML, computer vision and GIS data. Integrated 150 data sources on GCP and fine-tuned models with LoRA. 3rd place nationally at PropVentures Lab by Brognoli.",
+      desc: "Real-estate and urban-planning analysis using ML, computer vision and GIS data, integrating many data sources on GCP. Fine-tuned models with LoRA. 3rd place nationally at PropVentures Lab by Brognoli.",
     },
     {
       key: "coneng",
@@ -189,7 +189,7 @@ const pt: Fallback = {
       now: false,
       company: "Vizzion",
       role: "Cofundador e CTO",
-      desc: "Análise imobiliária e urbanística com ML, visão computacional e dados GIS. Integramos 150 fontes de dados no GCP e fizemos fine-tuning de modelos com LoRA. 3º lugar nacional no PropVentures Lab da Brognoli.",
+      desc: "Análise imobiliária e urbana com machine learning, visão computacional e dados GIS, integrando diversas fontes de dados na GCP. Fiz fine-tuning de modelos com LoRA. 3º lugar nacional no PropVentures Lab da Brognoli.",
     },
     {
       key: "coneng",
