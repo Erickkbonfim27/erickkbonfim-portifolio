@@ -65,6 +65,8 @@ export interface Skill {
   title: string;
   category: SkillCategory;
   evidence: { kind: string; slug: string; title: string }[];
+  /** A cloud provider's services (AWS: Lambda, SQS…). */
+  services?: string[];
 }
 
 export interface ContactRequest {

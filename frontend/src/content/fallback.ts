@@ -24,13 +24,20 @@ export interface LearningCard {
   live: boolean;
 }
 
+export interface Provider {
+  name: string;
+  services: string[];
+}
+
 export interface StackGroup {
   key: string;
   title: string;
   label: string | null;
   dark: boolean;
-  span: "s6" | "s3";
+  span: "s6" | "s3" | "s12";
   tags: string[];
+  /** Cloud providers with their services, shown as rows inside the card. */
+  providers?: Provider[];
 }
 
 export interface WorkText {
@@ -55,9 +62,14 @@ const TAGS = {
   ai: ["LangGraph", "LangChain", "LlamaIndex", "LangSmith", "Langfuse", "RAG", "Hybrid search", "Evals", "LoRA fine-tuning", "Deep Agents"],
   backend: ["Python", "TypeScript", "Node.js", "Java · Spring Boot", "FastAPI", "Django + DRF", "Microservices"],
   data: ["PostgreSQL / PostGIS", "pgvector", "Qdrant", "Elasticsearch", "Pinecone", "Redis", "MongoDB", "BigQuery", "ClickHouse"],
-  cloud: ["GCP", "AWS", "CloudFormation", "Pub/Sub", "RabbitMQ"],
+  cloud: [] as string[],
   product: ["React", "React Native", "GIS", "Computer vision"],
 };
+
+const PROVIDERS: Provider[] = [
+  { name: "AWS", services: ["Lambda", "ECS", "Fargate", "EC2", "Lightsail", "API Gateway", "ELB", "RDS", "Aurora", "DynamoDB", "ElastiCache", "S3", "SQS / SQS FIFO", "SNS", "EventBridge", "SES", "CloudFront", "Route 53", "VPC", "Bedrock", "Bedrock AgentCore", "CloudWatch", "CloudTrail", "CloudFormation", "DMS"] },
+  { name: "GCP", services: ["Cloud Run", "Compute Engine", "Cloud Load Balancing", "Cloud NAT", "Cloud SQL", "AlloyDB", "Memorystore", "BigQuery", "Cloud Storage", "Pub/Sub", "Cloud Scheduler", "Cloud Build", "Database Migration Service", "Firebase", "Earth Engine"] },
+];
 
 const en: Fallback = {
   experience: [
@@ -129,8 +141,8 @@ const en: Fallback = {
     { key: "ai", title: "Agents & LLMs", label: "Core", dark: true, span: "s6", tags: TAGS.ai },
     { key: "backend", title: "Languages & backend", label: null, dark: false, span: "s6", tags: TAGS.backend },
     { key: "data", title: "Data & search", label: null, dark: false, span: "s6", tags: TAGS.data },
-    { key: "cloud", title: "Cloud & messaging", label: null, dark: false, span: "s3", tags: TAGS.cloud },
-    { key: "product", title: "Product & geo", label: null, dark: false, span: "s3", tags: TAGS.product },
+    { key: "product", title: "Product & geo", label: null, dark: false, span: "s6", tags: TAGS.product },
+    { key: "cloud", title: "Cloud & messaging", label: null, dark: false, span: "s12", tags: TAGS.cloud, providers: PROVIDERS },
   ],
   work: {
     vizzion: {
@@ -235,8 +247,8 @@ const pt: Fallback = {
     { key: "ai", title: "Agentes e LLMs", label: "Principal", dark: true, span: "s6", tags: TAGS.ai },
     { key: "backend", title: "Linguagens e backend", label: null, dark: false, span: "s6", tags: TAGS.backend },
     { key: "data", title: "Dados e busca", label: null, dark: false, span: "s6", tags: TAGS.data },
-    { key: "cloud", title: "Cloud e mensageria", label: null, dark: false, span: "s3", tags: TAGS.cloud },
-    { key: "product", title: "Produto e geo", label: null, dark: false, span: "s3", tags: TAGS.product },
+    { key: "product", title: "Produto e geo", label: null, dark: false, span: "s6", tags: TAGS.product },
+    { key: "cloud", title: "Cloud e mensageria", label: null, dark: false, span: "s12", tags: TAGS.cloud, providers: PROVIDERS },
   ],
   work: {
     vizzion: {

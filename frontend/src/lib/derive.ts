@@ -134,7 +134,7 @@ interface GroupSpec {
   key: "ai" | "backend" | "data" | "cloud" | "practice";
   label: boolean;
   dark: boolean;
-  span: "s6" | "s3";
+  span: StackGroup["span"];
   categories: SkillCategory[];
 }
 
@@ -142,22 +142,36 @@ const GROUPS: GroupSpec[] = [
   { key: "ai", label: true, dark: true, span: "s6", categories: ["ai"] },
   { key: "backend", label: false, dark: false, span: "s6", categories: ["language", "framework"] },
   { key: "data", label: false, dark: false, span: "s6", categories: ["data"] },
-  { key: "cloud", label: false, dark: false, span: "s3", categories: ["cloud"] },
-  { key: "practice", label: false, dark: false, span: "s3", categories: ["practice", "tool"] },
+  { key: "practice", label: false, dark: false, span: "s6", categories: ["practice", "tool"] },
+  { key: "cloud", label: false, dark: false, span: "s12", categories: ["cloud"] },
 ];
+
+/** Providers with their services become rows; a skill one of them already lists
+ * (Pub/Sub under GCP) is not repeated as a loose tag. */
+function cloudParts(skills: Skill[]): Pick<StackGroup, "tags" | "providers"> {
+  const providers = skills
+    .filter((s) => (s.services ?? []).length > 0)
+    .map((s) => ({ name: s.title, services: s.services ?? [] }));
+  const listed = new Set(providers.flatMap((p) => p.services));
+  const tags = skills.filter((s) => !s.services?.length && !listed.has(s.title)).map((s) => s.title);
+  return providers.length > 0 ? { tags, providers } : { tags };
+}
 
 /** Skills grouped into the handoff's cards, in API order; empty groups are dropped. */
 export function stackGroups(skills: Skill[] | null | undefined, lang: Lang = "en"): StackGroup[] {
   if (!skills || skills.length === 0) return FALLBACK[lang].stack;
   const titles = MESSAGES[lang].stackGroups;
-  return GROUPS.map((group) => ({
-    key: group.key,
-    title: titles[group.key],
-    label: group.label ? titles.core : null,
-    dark: group.dark,
-    span: group.span,
-    tags: skills.filter((s) => group.categories.includes(s.category)).map((s) => s.title),
-  })).filter((group) => group.tags.length > 0);
+  return GROUPS.map((group) => {
+    const members = skills.filter((s) => group.categories.includes(s.category));
+    return {
+      key: group.key,
+      title: titles[group.key],
+      label: group.label ? titles.core : null,
+      dark: group.dark,
+      span: group.span,
+      ...(group.key === "cloud" ? cloudParts(members) : { tags: members.map((s) => s.title) }),
+    };
+  }).filter((group) => group.tags.length > 0 || (group.providers ?? []).length > 0);
 }
 
 export function workText(slug: WorkSlug, entry: Entry | null | undefined, lang: Lang = "en"): WorkText {

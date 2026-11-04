@@ -60,7 +60,9 @@ def json_resume(
 
     by_category: dict[str, list[str]] = {}
     for skill in skills:
-        by_category.setdefault(skill.category, []).append(skill.title)
+        by_category.setdefault(skill.category, []).extend(
+            [skill.title, *(f"{skill.title} {service}" for service in skill.services)]
+        )
 
     return {
         "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",

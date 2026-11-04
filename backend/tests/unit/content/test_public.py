@@ -199,6 +199,26 @@ class TestCatalog:
             (Kind.PROJECT, "vizzion", "Vizzion"),
         ]
 
+    async def test_a_provider_carries_its_services(self, seeded: Seeded) -> None:
+        content = seeded.container.content
+        draft = EntryDraft.build(
+            Kind.SKILL,
+            slug="aws",
+            translations=texts("AWS", "AWS"),
+            details={"category": "cloud", "services": ["Lambda", "SQS"]},
+        )
+        aws = await content.create(Kind.SKILL, draft)
+        await content.publish(aws.id, aws.version)
+        skills = await seeded.container.catalog.skills(Lang.EN)
+        assert {s.slug: s.services for s in skills} == {"python": (), "aws": ("Lambda", "SQS")}
+        resume = json_resume(
+            None, work=(), education=(), certificates=(), projects=(), skills=skills, links=LINKS
+        )
+        assert resume["skills"][-1] == {
+            "name": "cloud",
+            "keywords": ["AWS", "AWS Lambda", "AWS SQS"],
+        }
+
     async def test_profile_and_availability(self, seeded: Seeded) -> None:
         catalog = seeded.container.catalog
         profile = await catalog.profile(Lang.EN)
@@ -309,6 +329,7 @@ class TestHttp:
     async def test_skills(self, client: AsyncClient) -> None:
         [python] = (await client.get("/api/skills")).json()
         assert [e["slug"] for e in python["evidence"]] == ["loopia", "vizzion"]
+        assert python["services"] == []
 
     async def test_json_resume(self, client: AsyncClient) -> None:
         resume = (await client.get("/api/resume.json")).json()

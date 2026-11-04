@@ -117,9 +117,32 @@ describe("stackGroups", () => {
       ["ai", ["LangGraph"], "s6", true],
       ["backend", ["Python", "FastAPI"], "s6", false],
       ["data", ["Qdrant"], "s6", false],
-      ["practice", ["Evals"], "s3", false],
+      ["practice", ["Evals"], "s6", false],
     ]);
     expect(groups[0]?.label).toBe("Core");
+  });
+
+  it("shows each cloud provider with its services, without repeating them as tags", () => {
+    const groups = stackGroups([
+      { ...skill("AWS", "cloud"), services: ["Lambda", "SQS"] },
+      { ...skill("GCP", "cloud"), services: ["Cloud Run", "Pub/Sub"] },
+      skill("Pub/Sub", "cloud"),
+      skill("RabbitMQ", "cloud"),
+    ]);
+    expect(groups).toEqual([
+      expect.objectContaining({
+        key: "cloud",
+        span: "s12",
+        tags: ["RabbitMQ"],
+        providers: [
+          { name: "AWS", services: ["Lambda", "SQS"] },
+          { name: "GCP", services: ["Cloud Run", "Pub/Sub"] },
+        ],
+      }),
+    ]);
+    const plain = stackGroups([skill("AWS", "cloud")]);
+    expect(plain[0]).toEqual(expect.objectContaining({ tags: ["AWS"] }));
+    expect(plain[0]?.providers).toBeUndefined();
   });
 });
 

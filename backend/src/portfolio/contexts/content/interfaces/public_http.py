@@ -141,6 +141,9 @@ class SkillOut(BaseModel):
     title: str
     category: str
     evidence: list[EvidenceOut]
+    services: list[str] = Field(
+        default_factory=list, description="A cloud provider's services Erick has used"
+    )
 
     @classmethod
     def of(cls, skill: PublicSkill) -> "SkillOut":
@@ -149,6 +152,7 @@ class SkillOut(BaseModel):
             title=skill.title,
             category=skill.category,
             evidence=[EvidenceOut(kind=e.kind, slug=e.slug, title=e.title) for e in skill.evidence],
+            services=list(skill.services),
         )
 
 

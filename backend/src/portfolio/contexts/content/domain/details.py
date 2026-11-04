@@ -16,12 +16,14 @@ from portfolio.kernel.email import Email, InvalidEmailError
 
 _MONTH = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 MAX_LINKS = 10
+MAX_ITEMS = 40
+MAX_ITEM = 60
 MAX_URL = 2000
 
 # Set by the domain, never accepted from input.
 SERVER_MANAGED = frozenset({"availability_updated_at"})
 
-FieldType = Literal["text", "month", "url", "email", "choice", "links"]
+FieldType = Literal["text", "month", "url", "email", "choice", "links", "list"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +89,9 @@ SCHEMAS: dict[Kind, tuple[Field, ...]] = {
             required=True,
             choices=("language", "framework", "ai", "data", "cloud", "practice", "tool"),
         ),
+        # A provider's services (AWS: Lambda, SQS…). The evidence stays on the skill:
+        # which jobs used AWS, not which service ran where.
+        Field("services", "list"),
     ),
 }
 
@@ -125,17 +130,28 @@ def _value(field: Field, value: object) -> Any:
             if value not in field.choices:
                 raise InvalidEntryError(f"{field.name} must be one of {list(field.choices)}")
             return value
-        case _:  # "links"
-            if not isinstance(value, list) or len(value) > MAX_LINKS:
-                raise InvalidEntryError(f"{field.name} must be a list of up to {MAX_LINKS}")
-            links = []
-            for link in value:
-                if not isinstance(link, Mapping) or set(link) != {"label", "url"}:
-                    raise InvalidEntryError(f"each of {field.name} needs exactly label and url")
-                links.append(
-                    {"label": _text(link["label"], "label", 60), "url": _url(link["url"], "url")}
-                )
-            return links
+        case _:  # "list" or "links"
+            return (_list if field.type == "list" else _links)(value, field.name)
+
+
+def _list(value: object, name: str) -> list[str]:
+    if not isinstance(value, list) or len(value) > MAX_ITEMS:
+        raise InvalidEntryError(f"{name} must be a list of up to {MAX_ITEMS}")
+    items = [_text(item, name, MAX_ITEM) for item in value]
+    if len(set(items)) != len(items):
+        raise InvalidEntryError(f"{name} must not repeat an item")
+    return items
+
+
+def _links(value: object, name: str) -> list[dict[str, str]]:
+    if not isinstance(value, list) or len(value) > MAX_LINKS:
+        raise InvalidEntryError(f"{name} must be a list of up to {MAX_LINKS}")
+    links = []
+    for link in value:
+        if not isinstance(link, Mapping) or set(link) != {"label", "url"}:
+            raise InvalidEntryError(f"each of {name} needs exactly label and url")
+        links.append({"label": _text(link["label"], "label", 60), "url": _url(link["url"], "url")})
+    return links
 
 
 def parse_details(kind: Kind, raw: Mapping[str, Any]) -> dict[str, Any]:

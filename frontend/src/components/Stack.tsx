@@ -29,13 +29,34 @@ export function Stack({ groups }: { groups: StackGroup[] }) {
               ) : (
                 <h3 className="sh">{group.title}</h3>
               )}
-              <div className="tagrow">
-                {group.tags.map((tag) => (
-                  <span key={tag} className="tag">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              {group.providers && (
+                <div className="providers">
+                  {group.providers.map((provider) => (
+                    <div key={provider.name} className="provider">
+                      <p className="provider-name mono">
+                        {provider.name}
+                        <span>{provider.services.length}</span>
+                      </p>
+                      <div className="tagrow">
+                        {provider.services.map((service) => (
+                          <span key={service} className="tag">
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {group.tags.length > 0 && (
+                <div className="tagrow">
+                  {group.tags.map((tag) => (
+                    <span key={tag} className="tag">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </article>
           ))}
         </div>

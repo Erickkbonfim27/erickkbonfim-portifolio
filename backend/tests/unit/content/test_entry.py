@@ -71,6 +71,12 @@ class TestDetails:
             "links": [{"label": "GitHub", "url": "https://github.com/x"}],
         }
 
+    def test_a_provider_lists_its_services(self) -> None:
+        parsed = parse_details(
+            Kind.SKILL, {"category": "cloud", "services": [" Lambda ", "SQS / SQS FIFO"]}
+        )
+        assert parsed == {"category": "cloud", "services": ["Lambda", "SQS / SQS FIFO"]}
+
     @pytest.mark.parametrize(
         ("kind", "details", "reason"),
         [
@@ -85,6 +91,10 @@ class TestDetails:
             (Kind.PROFILE, {"name": "E", "availability": "open", "email": "nope"}, "email"),
             (Kind.PROFILE, {"name": "E", "availability": "open", "links": "x"}, "list"),
             (Kind.PROFILE, {"name": "E", "availability": "open", "links": [{"url": "x"}]}, "label"),
+            (Kind.SKILL, {"category": "cloud", "services": "Lambda"}, "list of up to"),
+            (Kind.SKILL, {"category": "cloud", "services": ["S3"] * 41}, "list of up to"),
+            (Kind.SKILL, {"category": "cloud", "services": ["S3", " S3"]}, "repeat"),
+            (Kind.SKILL, {"category": "cloud", "services": [""]}, "text up to"),
         ],
     )
     def test_rejects(self, kind: Kind, details: dict[str, Any], reason: str) -> None:

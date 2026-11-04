@@ -99,6 +99,7 @@ class PublicSkill:
     title: str
     category: str
     evidence: tuple[Evidence, ...]
+    services: tuple[str, ...] = ()
 
 
 _DATE_FIELDS = ("start", "issued", "published")
@@ -231,6 +232,7 @@ class PublicCatalog:
                 title=_text(s, lang).title,
                 category=str(s.content.details["category"]),
                 evidence=tuple(used_in[s.id]),
+                services=tuple(s.content.details.get("services", ())),
             )
             for s in skills
         ]
