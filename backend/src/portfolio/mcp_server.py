@@ -29,7 +29,8 @@ INSTRUCTIONS = (
     "Erick Kopak Bonfim's portfolio. Erick is an AI Engineer (agents, RAG, evals, "
     "observability) based in Brazil. Use these tools to answer questions about his work "
     "with facts from his published content, and cite the project or job a fact comes "
-    "from. Start with get_profile; use search_portfolio for specific questions. Only "
+    "from. Start with get_profile; use search_portfolio for specific questions, and "
+    "get_project, get_experience or get_writing to read a source in full. Only "
     "call contact_erick after the user confirmed they want to send that message."
 )
 
@@ -61,6 +62,17 @@ class Project(BaseModel):
     url: str
 
 
+class Document(BaseModel):
+    slug: str
+    title: str
+    summary: str
+    body: str = Field(description="The full text, as plain text")
+    tags: list[str]
+    details: dict[str, Any]
+    skills: list[str]
+    url: str | None = Field(description="Public page, when the entry has one")
+
+
 class SearchResult(BaseModel):
     kind: str
     slug: str
@@ -75,8 +87,15 @@ class ContactAccepted(BaseModel):
     message: str
 
 
+# Articles with a page of their own on the site; the others are read through the API.
+WRITING_PAGES = {"integrations": "/integrations"}
+
+
 def _page(links: SiteLinks, kind: str, slug: str) -> str | None:
-    return f"{links.site_url}/work/{slug}" if kind == Kind.PROJECT.value else None
+    if kind == Kind.PROJECT.value:
+        return f"{links.site_url}/work/{slug}"
+    path = WRITING_PAGES.get(slug) if kind == Kind.WRITING.value else None
+    return f"{links.site_url}{path}" if path else None
 
 
 def _summary(entry: PublicEntry, links: SiteLinks) -> EntrySummary:
@@ -86,6 +105,19 @@ def _summary(entry: PublicEntry, links: SiteLinks) -> EntrySummary:
         summary=entry.summary,
         tags=list(entry.tags),
         details=dict(entry.details),
+        url=_page(links, entry.kind.value, entry.slug),
+    )
+
+
+def _document(entry: PublicEntry, links: SiteLinks) -> Document:
+    return Document(
+        slug=entry.slug,
+        title=entry.title,
+        summary=entry.summary,
+        body=entry.body_text,
+        tags=list(entry.tags),
+        details=dict(entry.details),
+        skills=[s.title for s in entry.skills],
         url=_page(links, entry.kind.value, entry.slug),
     )
 
@@ -156,6 +188,29 @@ def build_mcp_server(container: Container, links: SiteLinks) -> MCPServer:
             attachments=[{"label": a.label, "url": a.file.url} for a in entry.attachments],
             url=f"{links.site_url}/work/{entry.slug}",
         )
+
+    @server.tool(title="List jobs", annotations=READ_ONLY)
+    async def list_experience(lang: LangParam = "en") -> list[EntrySummary]:
+        """Every job, newest first: role, organization, dates and a short summary
+        (use get_experience for the full description)."""
+        return [_summary(e, links) for e in await catalog.entries(Kind.EXPERIENCE, Lang(lang))]
+
+    @server.tool(title="Job", annotations=READ_ONLY)
+    async def get_experience(slug: str, lang: LangParam = "en") -> Document:
+        """One job in full: what Erick did there, the stack, and the skills he used."""
+        with _explained():
+            return _document(await catalog.entry(Kind.EXPERIENCE, slug, Lang(lang)), links)
+
+    @server.tool(title="List articles", annotations=READ_ONLY)
+    async def list_writing(lang: LangParam = "en") -> list[EntrySummary]:
+        """Articles Erick wrote, without their full text (use get_writing for that)."""
+        return [_summary(e, links) for e in await catalog.entries(Kind.WRITING, Lang(lang))]
+
+    @server.tool(title="Article", annotations=READ_ONLY)
+    async def get_writing(slug: str, lang: LangParam = "en") -> Document:
+        """One article in full, e.g. how Erick builds integrations that keep working."""
+        with _explained():
+            return _document(await catalog.entry(Kind.WRITING, slug, Lang(lang)), links)
 
     @server.tool(title="CV (JSON Resume)", annotations=READ_ONLY)
     async def get_resume(lang: LangParam = "en") -> dict[str, Any]:

@@ -130,6 +130,8 @@ The same data as tools, for Claude, ChatGPT, Codex or any MCP client:
 |---|---|
 | `get_profile`, `check_availability` | who, and whether open to work |
 | `list_projects`, `get_project` | case studies (full text as plain text) |
+| `list_experience`, `get_experience` | jobs (full description as plain text) |
+| `list_writing`, `get_writing` | articles (full text as plain text) |
 | `get_resume` | JSON Resume |
 | `search_portfolio` | hybrid search, with where each passage comes from |
 | `get_skills` | skills with the work that used them |

@@ -7,7 +7,9 @@ from typing import Any
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.unit.content.test_public import seed
+from portfolio.contexts.content.domain.entry import EntryDraft
+from portfolio.contexts.content.domain.kinds import Kind
+from tests.unit.content.test_public import BODY, seed, texts
 from tests.unit.support import World, make_world
 
 HEADERS = {
@@ -43,6 +45,16 @@ class Mcp:
 async def world() -> World:
     world = make_world()
     await seed(world)
+    content = world.container().content
+    for slug in ("integrations", "ecosystem"):
+        draft = EntryDraft.build(
+            Kind.WRITING,
+            slug=slug,
+            translations=texts(slug.title(), slug.title(), "An article", BODY),
+            details={"published": "2026-11"},
+        )
+        entry = await content.create(Kind.WRITING, draft)
+        await content.publish(entry.id, entry.version)
     await world.search().reindex()
     return world
 
@@ -88,6 +100,10 @@ async def test_tools_and_their_annotations(world: World) -> None:
             "search_portfolio",
             "get_skills",
             "list_studies",
+            "list_experience",
+            "get_experience",
+            "list_writing",
+            "get_writing",
             "contact_erick",
         }
         read_only = {name for name, t in tools.items() if t["annotations"]["readOnlyHint"]}
@@ -117,6 +133,31 @@ async def test_projects(world: World) -> None:
         assert project["body"] == "<b>bold</b>"  # plain text for the model, not HTML
         assert project["skills"] == ["Python"]
         assert project["attachments"][0]["label"] == "Deck"
+
+
+async def test_experience(world: World) -> None:
+    async with session(world) as mcp:
+        listed = (await mcp.call("list_experience", lang="pt"))["structuredContent"]["result"]
+        assert [e["slug"] for e in listed] == ["loopia", "silpi"]  # never the draft
+        assert listed[0]["title"] == "Engenheiro de software"
+        job = (await mcp.call("get_experience", slug="loopia"))["structuredContent"]
+        assert job["details"]["organization"] == "Loopia"
+        assert job["skills"] == ["Python"]  # the draft skill stays hidden
+        assert job["url"] is None  # jobs have no page of their own
+        missing = await mcp.call("get_experience", slug="secret")
+        assert missing["isError"] is True
+
+
+async def test_writing(world: World) -> None:
+    async with session(world) as mcp:
+        listed = (await mcp.call("list_writing"))["structuredContent"]["result"]
+        pages = {w["slug"]: w["url"] for w in listed}
+        assert pages == {"integrations": "https://erick.test/integrations", "ecosystem": None}
+        article = (await mcp.call("get_writing", slug="integrations", lang="pt"))[
+            "structuredContent"
+        ]
+        assert (article["title"], article["body"]) == ("Integrations", "<b>bold</b>")
+        assert (await mcp.call("get_writing", slug="nope"))["isError"] is True
 
 
 async def test_unknown_project_is_a_tool_error(world: World) -> None:
