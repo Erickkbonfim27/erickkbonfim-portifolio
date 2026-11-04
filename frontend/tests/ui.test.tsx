@@ -121,9 +121,11 @@ describe("Home", () => {
     const stack = screen.getByRole("region", { name: "Tools I use" });
     expect(within(stack).getByText("LangGraph")).toBeInTheDocument();
     expect(within(stack).queryByText("Data & search")).not.toBeInTheDocument();
-    const cvLinks = screen.getAllByRole("link", { name: /Download CV|CV \(PDF\)/ });
-    expect(cvLinks.length).toBeGreaterThanOrEqual(2);
+    // The CV is offered once, in the Experience section.
+    const cvLinks = screen.getAllByRole("link", { name: /Download CV/ });
+    expect(cvLinks).toHaveLength(1);
     expect(cvLinks[0]).toHaveAttribute("href", cv.url);
+    expect(cvLinks[0]?.closest("#experience")).not.toBeNull();
   });
 
   it("toggles the mobile menu and copies the email", async () => {

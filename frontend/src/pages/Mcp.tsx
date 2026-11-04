@@ -143,7 +143,7 @@ export function McpContent({ url }: { url: string }) {
 export function Mcp() {
   const { t } = useI18n();
   return (
-    <Layout onHome={false} cv={null} title={t.titles.mcp}>
+    <Layout onHome={false} title={t.titles.mcp}>
       <McpContent url={mcpUrl()} />
     </Layout>
   );

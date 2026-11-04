@@ -23,7 +23,7 @@ export function NotFoundContent() {
 export function NotFound() {
   const { t } = useI18n();
   return (
-    <Layout onHome={false} cv={null} title={t.titles.notFound}>
+    <Layout onHome={false} title={t.titles.notFound}>
       <NotFoundContent />
     </Layout>
   );

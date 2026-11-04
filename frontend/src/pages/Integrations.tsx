@@ -11,7 +11,7 @@ export function Integrations() {
   const page = useApi(`writing:${lang}:integrations`, (signal) => api.writing("integrations", lang, { signal }));
   const entry = page.data;
   return (
-    <Layout onHome={false} cv={null} title={t.titles.integrations}>
+    <Layout onHome={false} title={t.titles.integrations}>
       {page.error?.kind === "not_found" ? (
         <NotFoundContent />
       ) : (

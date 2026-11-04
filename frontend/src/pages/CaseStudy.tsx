@@ -135,7 +135,7 @@ export function CaseStudy({ slug }: { slug: string }) {
   }
 
   return (
-    <Layout onHome={false} cv={null} title={title}>
+    <Layout onHome={false} title={title}>
       {content}
     </Layout>
   );

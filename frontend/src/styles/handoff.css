@@ -423,7 +423,7 @@ a { color: inherit; } a:hover { color: inherit; }
 }
 @container page (max-width: 900px) {
   .ekb .providers { grid-template-columns: 1fr; gap: 22px; }
-  .ekb .navlinks, .ekb .nav-cv { display: none; }
+  .ekb .navlinks { display: none; }
   .ekb .menu-btn { display: inline-flex; }
 }
 @container page (max-width: 720px) {

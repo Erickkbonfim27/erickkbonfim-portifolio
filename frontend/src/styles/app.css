@@ -102,7 +102,6 @@
 
 /* Same breakpoints as handoff.css, repeated after the rules above so they win. */
 @container page (max-width: 1040px) {
-  .ekb .nav-cv { display: none; }
 }
 /* Six links fit only on wide screens; below that the menu takes them. */
 @container page (max-width: 1180px) {

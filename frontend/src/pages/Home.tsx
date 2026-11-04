@@ -49,8 +49,8 @@ export function Home() {
   const [education, certificates, studies] = learning.data ?? [null, null, null];
 
   return (
-    <Layout onHome cv={cv} title={t.titles.home}>
-      <Hero availability={profile.data?.availability ?? null} cv={cv} />
+    <Layout onHome title={t.titles.home}>
+      <Hero availability={profile.data?.availability ?? null} />
       <Work entries={work.data ?? {}} />
       <Ecosystem entry={ecosystem.data ?? null} />
       <Approach />
@@ -63,7 +63,7 @@ export function Home() {
       />
       <Stack groups={stackGroups(skills.data, lang)} />
       <Outside />
-      <Contact cv={cv} />
+      <Contact />
     </Layout>
   );
 }

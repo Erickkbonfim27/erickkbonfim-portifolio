@@ -1,5 +1,4 @@
 import { useEffect, type CSSProperties, type ReactNode } from "react";
-import type { Attachment } from "../api/types";
 import { useI18n } from "../i18n";
 import { AssistantDot } from "./AssistantDot";
 import { Mark } from "./Icons";
@@ -10,14 +9,13 @@ const ACCENT = "#2E4BFF";
 interface LayoutProps {
   /** True on the home page: section links are plain #hash anchors there. */
   onHome: boolean;
-  cv: Attachment | null;
   /** The browser tab title for this page. */
   title: string;
   children: ReactNode;
 }
 
 /** The `.ekb` page shell from the handoff: starfield, slab, sticky nav, footer. */
-export function Layout({ onHome, cv, title, children }: LayoutProps) {
+export function Layout({ onHome, title, children }: LayoutProps) {
   const { t } = useI18n();
 
   useEffect(() => {
@@ -31,7 +29,7 @@ export function Layout({ onHome, cv, title, children }: LayoutProps) {
         {t.layout.skip}
       </a>
       <div className="slab">
-        <Nav onHome={onHome} cv={cv} />
+        <Nav onHome={onHome} />
         <main id="main">{children}</main>
         <footer className="wrap foot">
           <div className="foot-mark">

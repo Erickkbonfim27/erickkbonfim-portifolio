@@ -1,19 +1,18 @@
 import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
-import type { Attachment, Availability, Explained } from "../api/types";
+import type { Availability, Explained } from "../api/types";
 import { EMAIL, GITHUB, LINKEDIN } from "../content/fallback";
 import { useI18n } from "../i18n";
 import { availabilityText, isOpen } from "../lib/derive";
 import { useApi } from "../lib/useApi";
 import { useInView } from "../lib/useInView";
 import { MAX_QUESTION, hitHref, ms } from "../lib/search";
-import { ArrowUpRight, Check, Download } from "./Icons";
+import { ArrowUpRight, Check } from "./Icons";
 import { Link } from "./Link";
 import { SearchAnswer } from "./SearchAnswer";
 
 interface HeroProps {
   availability: Availability | null;
-  cv: Attachment | null;
 }
 
 type Search = ReturnType<typeof useApi<Explained>>;
@@ -157,7 +156,7 @@ function Trace({ search, query }: { search: Search; query: string }) {
   );
 }
 
-export function Hero({ availability, cv }: HeroProps) {
+export function Hero({ availability }: HeroProps) {
   const { lang, t, to } = useI18n();
   const h = t.hero;
   // A preset by index (it follows the language), or the visitor's own question.
@@ -226,12 +225,6 @@ export function Hero({ availability, cv }: HeroProps) {
               GitHub
               <ArrowUpRight size={13} />
             </a>
-            {cv && (
-              <a className="tlink" href={cv.url} download={cv.filename}>
-                {h.cv}
-                <Download />
-              </a>
-            )}
           </div>
         </div>
 

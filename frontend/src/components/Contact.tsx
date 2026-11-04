@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { Attachment } from "../api/types";
 import { EMAIL, GITHUB, LINKEDIN } from "../content/fallback";
 import { useI18n } from "../i18n";
 import { ContactForm } from "./ContactForm";
 import { ArrowUpRight } from "./Icons";
 
-export function Contact({ cv }: { cv: Attachment | null }) {
+export function Contact() {
   const { t } = useI18n();
   const c = t.contact;
   const [copied, setCopied] = useState(false);
@@ -59,11 +58,6 @@ export function Contact({ cv }: { cv: Attachment | null }) {
             <a className="pillbtn pill-ghost" href={GITHUB}>
               GitHub
             </a>
-            {cv && (
-              <a id="cv" className="pillbtn pill-ghost" href={cv.url} download={cv.filename}>
-                {c.cv}
-              </a>
-            )}
           </div>
           <ContactForm />
           <div className="emailrow">

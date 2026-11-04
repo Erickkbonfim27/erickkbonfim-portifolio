@@ -1,5 +1,4 @@
 import { useState, type AnchorHTMLAttributes, type MouseEvent } from "react";
-import type { Attachment } from "../api/types";
 import { useI18n } from "../i18n";
 import { rememberLang } from "../lib/locale";
 import { localize, navigate, splitLang, usePathname } from "../lib/router";
@@ -58,12 +57,11 @@ function ThemeSwitch() {
 interface NavProps {
   /** True on the home page: section links are plain #hash anchors there. */
   onHome: boolean;
-  cv: Attachment | null;
 }
 
 // Layout lives in classes (app.css), never in inline styles: an inline `display`
 // beats the container queries that hide the desktop links on small screens.
-export function Nav({ onHome, cv }: NavProps) {
+export function Nav({ onHome }: NavProps) {
   const { t, to } = useI18n();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -100,11 +98,6 @@ export function Nav({ onHome, cv }: NavProps) {
               <LangSwitch />
               <ThemeSwitch />
             </div>
-            {cv && (
-              <a className="pillbtn pill-line sm nav-cv" href={cv.url} download={cv.filename}>
-                {t.nav.cv}
-              </a>
-            )}
             <SectionAnchor className="pillbtn pill-dark sm nav-cta" onHome={onHome} id="contact">
               {t.nav.contact}
               <span className="ab">
@@ -156,11 +149,6 @@ export function Nav({ onHome, cv }: NavProps) {
                   <ArrowUpRight />
                 </span>
               </SectionAnchor>
-              {cv && (
-                <a className="pillbtn pill-line" href={cv.url} download={cv.filename} onClick={close}>
-                  {t.nav.cv}
-                </a>
-              )}
               <div className="mmenu-prefs" role="group" aria-label={t.nav.preferences}>
                 <LangSwitch onDone={close} />
                 <ThemeSwitch />
