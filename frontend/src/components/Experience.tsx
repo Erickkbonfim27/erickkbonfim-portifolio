@@ -10,9 +10,10 @@ interface ExperienceProps {
   /** The CV in the page's language, and the other one when it exists. */
   cv?: Attachment | null;
   otherCv?: Attachment | null;
+  letter?: Attachment | null;
 }
 
-export function Experience({ rows, learning, cv = null, otherCv = null }: ExperienceProps) {
+export function Experience({ rows, learning, cv = null, otherCv = null, letter = null }: ExperienceProps) {
   const { t } = useI18n();
   return (
     <section id="experience" className="sec" aria-labelledby="xp-title">
@@ -37,6 +38,12 @@ export function Experience({ rows, learning, cv = null, otherCv = null }: Experi
                     <Download size={15} />
                   </span>
                 </a>
+                {letter && (
+                  <a className="tlink" href={letter.url} download={letter.filename}>
+                    {t.experience.letter}
+                    <Download />
+                  </a>
+                )}
                 <span className="xp-cv-meta mono">
                   PDF · {formatBytes(cv.size)}
                   {otherCv && (

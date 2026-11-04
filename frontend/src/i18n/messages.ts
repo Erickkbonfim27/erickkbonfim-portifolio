@@ -282,6 +282,7 @@ const en = {
     inParallel: (organization: string) => `Service provider, in parallel with ${organization}`,
     cv: "Download CV",
     cvOther: "Versão em português",
+    letter: "Cover letter",
   },
   stack: {
     eyebrow: "Stack",
@@ -726,6 +727,7 @@ const pt: Messages = {
     inParallel: (organization: string) => `Prestação de serviço, em paralelo à ${organization}`,
     cv: "Baixar currículo",
     cvOther: "English version",
+    letter: "Carta de apresentação",
   },
   stack: {
     eyebrow: "Stack",

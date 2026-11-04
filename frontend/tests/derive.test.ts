@@ -4,6 +4,7 @@ import { MESSAGES } from "../src/i18n/messages";
 import {
   availabilityText,
   cvAttachment,
+  letterAttachment,
   experienceRows,
   formatBytes,
   formatMonth,
@@ -169,6 +170,9 @@ describe("small helpers", () => {
     expect(cvAttachment(profile({ attachments: [en, pt] }), "pt")).toBe(pt);
     expect(cvAttachment(profile({ attachments: [en, pt] }), "en")).toBe(en);
     expect(cvAttachment(profile({ attachments: [cv, pt] }), "en")).toBe(cv);
+    const letter = { ...cv, label: "Letter (PT)" };
+    expect(letterAttachment(profile({ attachments: [pt, letter] }), "pt")).toBe(letter);
+    expect(letterAttachment(profile({ attachments: [pt, letter] }), "en")).toBeNull();
     expect(cvAttachment(null)).toBeNull();
   });
 

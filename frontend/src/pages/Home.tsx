@@ -11,7 +11,7 @@ import { Outside } from "../components/Outside";
 import { Stack } from "../components/Stack";
 import { Work, type WorkEntries } from "../components/Work";
 import { useI18n } from "../i18n";
-import { cvAttachment, experienceRows, learningCards, stackGroups } from "../lib/derive";
+import { cvAttachment, experienceRows, learningCards, letterAttachment, stackGroups } from "../lib/derive";
 import { useApi } from "../lib/useApi";
 
 /** A failed optional request resolves to null: the section falls back to the handoff copy. */
@@ -59,6 +59,7 @@ export function Home() {
         learning={learningCards(education, certificates, studies, undefined, lang)}
         cv={cv}
         otherCv={otherCv !== cv ? otherCv : null}
+        letter={letterAttachment(profile.data, lang)}
       />
       <Stack groups={stackGroups(skills.data, lang)} />
       <Outside />

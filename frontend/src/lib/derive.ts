@@ -196,6 +196,11 @@ export function cvAttachment(profile: Profile | null | undefined, lang: Lang = "
   return labelled(`cv (${lang})`) ?? labelled("cv") ?? null;
 }
 
+/** The cover letter in the page's language ("Letter (PT)"), if there is one. */
+export function letterAttachment(profile: Profile | null | undefined, lang: Lang = "en"): Attachment | null {
+  return profile?.attachments.find((a) => a.label.trim().toLowerCase() === `letter (${lang})`) ?? null;
+}
+
 export function formatBytes(size: number): string {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
