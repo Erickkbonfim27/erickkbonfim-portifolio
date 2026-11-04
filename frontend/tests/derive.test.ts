@@ -164,6 +164,11 @@ describe("small helpers", () => {
     const cv = { label: " cv ", filename: "cv.pdf", url: "https://f/cv.pdf", content_type: "application/pdf", size: 1 };
     expect(cvAttachment(profile({ attachments: [{ ...cv, label: "Portfolio" }, cv] }))).toBe(cv);
     expect(cvAttachment(profile())).toBeNull();
+    const en = { ...cv, label: "CV (EN)" };
+    const pt = { ...cv, label: "CV (PT)" };
+    expect(cvAttachment(profile({ attachments: [en, pt] }), "pt")).toBe(pt);
+    expect(cvAttachment(profile({ attachments: [en, pt] }), "en")).toBe(en);
+    expect(cvAttachment(profile({ attachments: [cv, pt] }), "en")).toBe(cv);
     expect(cvAttachment(null)).toBeNull();
   });
 

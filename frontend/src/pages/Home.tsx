@@ -44,7 +44,8 @@ export function Home() {
     if (target) document.getElementById(target)?.scrollIntoView();
   }, []);
 
-  const cv = cvAttachment(profile.data);
+  const cv = cvAttachment(profile.data, lang);
+  const otherCv = cvAttachment(profile.data, lang === "pt" ? "en" : "pt");
   const [education, certificates, studies] = learning.data ?? [null, null, null];
 
   return (
@@ -53,7 +54,12 @@ export function Home() {
       <Work entries={work.data ?? {}} />
       <Ecosystem entry={ecosystem.data ?? null} />
       <Approach />
-      <Experience rows={experienceRows(experience.data, lang)} learning={learningCards(education, certificates, studies, undefined, lang)} />
+      <Experience
+        rows={experienceRows(experience.data, lang)}
+        learning={learningCards(education, certificates, studies, undefined, lang)}
+        cv={cv}
+        otherCv={otherCv !== cv ? otherCv : null}
+      />
       <Stack groups={stackGroups(skills.data, lang)} />
       <Outside />
       <Contact cv={cv} />

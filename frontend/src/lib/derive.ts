@@ -190,9 +190,10 @@ export function isOpen(availability: Availability | null | undefined): boolean {
   return availability?.status !== "not_looking";
 }
 
-/** The CV is the profile attachment labelled "CV". No CV, no link. */
-export function cvAttachment(profile: Profile | null | undefined): Attachment | null {
-  return profile?.attachments.find((a) => a.label.trim().toLowerCase() === "cv") ?? null;
+/** The CV in the page's language ("CV (PT)"), else the one labelled "CV". No CV, no link. */
+export function cvAttachment(profile: Profile | null | undefined, lang: Lang = "en"): Attachment | null {
+  const labelled = (label: string) => profile?.attachments.find((a) => a.label.trim().toLowerCase() === label);
+  return labelled(`cv (${lang})`) ?? labelled("cv") ?? null;
 }
 
 export function formatBytes(size: number): string {

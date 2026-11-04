@@ -1,12 +1,18 @@
+import type { Attachment } from "../api/types";
 import type { ExperienceRow, LearningCard } from "../content/fallback";
 import { useI18n } from "../i18n";
+import { formatBytes } from "../lib/derive";
+import { Download } from "./Icons";
 
 interface ExperienceProps {
   rows: ExperienceRow[];
   learning: LearningCard[];
+  /** The CV in the page's language, and the other one when it exists. */
+  cv?: Attachment | null;
+  otherCv?: Attachment | null;
 }
 
-export function Experience({ rows, learning }: ExperienceProps) {
+export function Experience({ rows, learning, cv = null, otherCv = null }: ExperienceProps) {
   const { t } = useI18n();
   return (
     <section id="experience" className="sec" aria-labelledby="xp-title">
@@ -21,7 +27,30 @@ export function Experience({ rows, learning }: ExperienceProps) {
               {t.experience.title}
             </h2>
           </div>
-          <p className="r">{t.experience.intro}</p>
+          <div className="r">
+            <p>{t.experience.intro}</p>
+            {cv && (
+              <div className="xp-cv">
+                <a className="pillbtn pill-dark" href={cv.url} download={cv.filename}>
+                  {t.experience.cv}
+                  <span className="ab">
+                    <Download size={15} />
+                  </span>
+                </a>
+                <span className="xp-cv-meta mono">
+                  PDF · {formatBytes(cv.size)}
+                  {otherCv && (
+                    <>
+                      {" · "}
+                      <a href={otherCv.url} download={otherCv.filename}>
+                        {t.experience.cvOther}
+                      </a>
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
         <div className="bento">
           <div className="card s12 reveal" style={{ overflow: "hidden" }}>
