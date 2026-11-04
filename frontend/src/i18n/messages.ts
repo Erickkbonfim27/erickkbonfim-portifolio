@@ -102,7 +102,7 @@ const en = {
       role: "Co-founder & CTO",
       sector: "Proptech / govtech · 2024–25",
       sub: "Data analysis for real-estate developers and city governments.",
-      ticks: ["Space syntax at scale, joined with 150 public and real-estate data sources"],
+      ticks: ["Space syntax at scale, joined with many public and real-estate data sources"],
     },
     platform: {
       pipeline: [
@@ -540,7 +540,7 @@ const pt: Messages = {
       role: "Cofundador e CTO",
       sector: "Proptech / govtech · 2024–25",
       sub: "Análise de dados para incorporadoras e prefeituras.",
-      ticks: ["Space syntax em escala, cruzada com 150 fontes de dados públicos e imobiliários"],
+      ticks: ["Space syntax em escala, cruzada com diversas fontes de dados públicos e imobiliários"],
     },
     platform: {
       pipeline: [
