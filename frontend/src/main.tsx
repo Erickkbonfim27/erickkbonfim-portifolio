@@ -9,6 +9,7 @@ import "./styles/blocks.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { startClarity, wantsClarity } from "./lib/clarity";
 import { landingRedirect } from "./lib/locale";
 import { initTheme } from "./lib/theme";
 
@@ -19,6 +20,8 @@ if (!root) throw new Error("#root is missing from index.html");
 initTheme();
 const redirect = landingRedirect(window.location);
 if (redirect) window.history.replaceState(null, "", redirect);
+
+if (wantsClarity(window.location, navigator)) startClarity();
 
 createRoot(root).render(
   <StrictMode>

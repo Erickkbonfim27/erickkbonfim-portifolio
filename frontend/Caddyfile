@@ -28,7 +28,7 @@
 	}
 
 	header {
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: {$FILES_ORIGIN:}; connect-src 'self' {$API_ORIGIN:http://localhost:8000} {$FILES_ORIGIN:}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://*.clarity.ms; style-src 'self'; font-src 'self'; img-src 'self' data: {$FILES_ORIGIN:} https://*.clarity.ms https://c.bing.com; connect-src 'self' {$API_ORIGIN:http://localhost:8000} {$FILES_ORIGIN:} https://*.clarity.ms https://c.bing.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"

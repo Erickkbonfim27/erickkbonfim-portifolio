@@ -153,7 +153,7 @@ export function AssistantDot() {
               </button>
             </div>
             {(traceOpen || tab === "trace") && (
-              <div className="dot-trace">
+              <div className="dot-trace" data-clarity-mask="true">
                 {trajectory && latest && trajectory.steps.length > 0 ? (
                   <Trajectory
                     key={latest.id}
@@ -182,7 +182,7 @@ export function AssistantDot() {
                   ×
                 </button>
               </header>
-              <div ref={log} className="dot-log" aria-live="polite">
+              <div ref={log} className="dot-log" aria-live="polite" data-clarity-mask="true">
                 <p className="bubble site">{a.greeting}</p>
                 {turns.length === 0 && (
                   <div className="asks">
@@ -197,7 +197,7 @@ export function AssistantDot() {
                   <Exchange key={turn.id} turn={turn} onProgress={record} />
                 ))}
               </div>
-              <form className="ask-form" onSubmit={submit}>
+              <form className="ask-form" onSubmit={submit} data-clarity-mask="true">
                 <input
                   ref={input}
                   value={draft}

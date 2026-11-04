@@ -66,7 +66,7 @@ export function ContactForm() {
 
   const sending = status.kind === "sending";
   return (
-    <form className="cform" onSubmit={submit} aria-describedby={`${id}-privacy`}>
+    <form className="cform" onSubmit={submit} aria-describedby={`${id}-privacy`} data-clarity-mask="true">
       <div className="cfields">
         <label className="cfield" htmlFor={`${id}-from`}>
           <span className="clabel mono">{f.name}</span>

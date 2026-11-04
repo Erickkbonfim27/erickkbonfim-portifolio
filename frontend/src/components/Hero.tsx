@@ -48,7 +48,7 @@ function Core({ search, query, onAsk }: { search: Search; query: string; onAsk: 
       </div>
       <div className="chat">
         {/* Absolutely placed: a long answer scrolls inside the card instead of stretching it. */}
-        <div className="chat-scroll" aria-live="polite">
+        <div className="chat-scroll" aria-live="polite" data-clarity-mask="true">
           <p className="bubble me">{query}</p>
           <SearchAnswer search={search} />
         </div>
@@ -60,7 +60,7 @@ function Core({ search, query, onAsk }: { search: Search; query: string; onAsk: 
           </button>
         ))}
       </div>
-      <form className="ask-form" onSubmit={submit}>
+      <form className="ask-form" onSubmit={submit} data-clarity-mask="true">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -94,7 +94,7 @@ function Trace({ search, query }: { search: Search; query: string }) {
       <div className="card-top">
         <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
           <span className="label mono">{h.traceLabel}</span>
-          <span className="mono trace-q">GET /api/search/explain?q={query}</span>
+          <span className="mono trace-q" data-clarity-mask="true">GET /api/search/explain?q={query}</span>
         </div>
         <span className={`trace-status mono ts-${status}`}>
           {status === "pass" && <Check size={12} />}
