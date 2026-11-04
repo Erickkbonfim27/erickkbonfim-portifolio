@@ -137,10 +137,7 @@ _META = re.compile(
     r"\b(site|portfolio|portfólio|trechos?|passages?)\b.*\b(n[aã]o|not|doesn't|does not|no)\b|"
     r"\b(n[aã]o|not|doesn't|does not|no)\b.*\b(site|portfolio|portfólio|trechos?|passages?)\b|"
     r"formul[aá]rio|contact form|\bcontat|\bcontact|e-?mail|"
-    r"pergunt\w* (a|ao|para o)? ?erick|ask erick|"
-    # Declining an off-topic question: "that goes beyond what I have about Erick's work".
-    r"\b(fora|al[eé]m) do que (eu )?(tenho|sei|conhe[cç]o|consigo|posso)|\bfoge d[oa]|"
-    r"\b(outside|beyond) what i\b|\bfalls? outside\b",
+    r"pergunt\w* (a|ao|para o)? ?erick|ask erick",
     re.IGNORECASE,
 )
 

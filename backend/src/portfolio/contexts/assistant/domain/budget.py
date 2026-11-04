@@ -14,6 +14,7 @@ class StopReason(StrEnum):
     TOOL_CALLS = "tool_calls"
     TIME = "time"
     TOKENS = "tokens"
+    OFF_TOPIC = "off_topic"  # not about Erick: the site's own reply, nothing to check
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,6 +1,7 @@
 """The site's agent: Aeva's loop, run by LangGraph.
 
     route → prefetch → model ⇄ tools → guard → grounding → answer
+                         ↘ off topic: the site's own reply
                                          ↘ rewrite → guard → grounding → answer | trim
 
 LangGraph runs the graph; every decision is a pure function in `domain/` (route,
@@ -330,9 +331,19 @@ class _Nodes:
             "output_tokens": reply.usage.output_tokens,
             "tool_calls": [call.name for call in reply.calls],
         }
+        off_topic = not reply.calls and prompts.is_off_topic(reply.text)
+        if off_topic:
+            detail["off_topic"] = True
         self.run.step("model", begin, detail)
         if reply.calls and stop is None:
             return {"messages": [*messages, Message("assistant", reply.text, reply.calls)]}
+        if off_topic:
+            lang = self.run.lang if self.run.lang in prompts.OFF_TOPIC else "en"
+            return {
+                "messages": messages,
+                "answer": prompts.OFF_TOPIC[lang],
+                "stop": StopReason.OFF_TOPIC.value,
+            }
         return {
             "messages": messages,
             "answer": normalize_citations(reply.text),
@@ -446,6 +457,8 @@ class _Nodes:
 
     @staticmethod
     def after_model(state: _State) -> str:
+        if state.get("stop") == StopReason.OFF_TOPIC:
+            return END  # the site's own words: nothing to check
         return "guard" if "answer" in state else "tools"
 
     @staticmethod
@@ -473,7 +486,7 @@ class _Nodes:
         graph.add_edge(START, "route")
         graph.add_conditional_edges("route", self.after_route, ["prefetch", "model"])
         graph.add_edge("prefetch", "model")
-        graph.add_conditional_edges("model", self.after_model, ["guard", "tools"])
+        graph.add_conditional_edges("model", self.after_model, [END, "guard", "tools"])
         graph.add_edge("tools", "model")
         graph.add_node("grounding", self.grounding_node)
         graph.add_conditional_edges(

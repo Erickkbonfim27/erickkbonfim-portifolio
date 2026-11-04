@@ -30,6 +30,26 @@ def load(name: str) -> Prompt:
     return Prompt(name, files.joinpath(f"{name}.md").read_text(encoding="utf-8").strip())
 
 
+# The model says only this for a question that is not about Erick; the site replies.
+OFF_TOPIC_MARK = "OFF_TOPIC"
+
+OFF_TOPIC = {
+    "en": (
+        "That question is outside what I have here: I only know Erick's work. If you like, "
+        "I can tell you what he built at Loopia, Vizzion or Rhye."
+    ),
+    "pt": (
+        "Essa pergunta foge do que eu tenho aqui: só conheço o trabalho do Erick. Se quiser, "
+        "posso contar o que ele construiu na Loopia, na Vizzion ou na Rhye."
+    ),
+}
+
+
+def is_off_topic(reply: str) -> bool:
+    """The marker alone, give or take quotes, backticks or a full stop around it."""
+    return reply.strip().strip("`'\".[]() \n").upper() == OFF_TOPIC_MARK
+
+
 # When a flagged answer has too little left after trimming: an honest pointer to Erick.
 FALLBACK = {
     "en": (

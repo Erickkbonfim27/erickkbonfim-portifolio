@@ -122,10 +122,6 @@ class TestDomain:
             ("use o formulário de contato", True),
             ("o e\u2011mail erickkbonfim@gmail.com", True),
             ("Ask Erick directly.", True),
-            ("essa pergunta foge do que eu conheço do trabalho dele", True),
-            ("writing code falls outside what I have about Erick's work", True),
-            ("Além de Python, ele usa Rust", False),
-            ("Ele trabalhou fora do Brasil", False),
             ("Erick has implemented RAG in production", False),
             ("O site não menciona, mas ele usou AWS", False),
             ("Ele integrou 300 fontes, o site não diz", False),
@@ -223,6 +219,20 @@ class TestAgent:
         assert steps(found) == ["route", "model", "guard"]
         assert model.seen[0][1] == []  # no tools offered
         assert found[-1].data["text"] == "Hi! Ask me about Erick's work."
+
+    @pytest.mark.parametrize("reply", ["OFF_TOPIC", " `OFF_TOPIC`. "])
+    async def test_off_topic_gets_the_sites_reply_without_checks(self, reply: str) -> None:
+        model = ScriptedModel([say(reply)])
+        found = await collect(Agent(model, FakeKnowledge()), "Capital da França?", lang="pt")
+        assert steps(found) == ["route", "retrieve", "model"]
+        assert detail(found, "model")["off_topic"] is True
+        assert found[-1].data["text"] == prompts.OFF_TOPIC["pt"]
+        assert found[-1].data["stop"] == "off_topic"
+        assert found[-1].data["citations"] == []
+
+    def test_only_the_marker_alone_is_off_topic(self) -> None:
+        assert prompts.is_off_topic("off_topic.")
+        assert not prompts.is_off_topic("OFF_TOPIC, but Erick used Python [1].")
 
     async def test_prefetch_tools_grounding_and_citations(self) -> None:
         model = ScriptedModel(

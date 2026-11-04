@@ -139,8 +139,8 @@ def check(
         "no_trim": "trim" not in names,
         "grounded": bool(verdicts) and verdicts[-1]["detail"].get("passed") is True,
     }
-    if case.kind == "smalltalk":
-        out.pop("grounded")  # small talk has nothing to check against
+    if case.kind == "smalltalk" or answer.get("stop") == "off_topic":
+        out.pop("grounded")  # small talk and the site's off-topic reply: nothing to check
     if e.any:
         out["terms_any"] = any(_plain(term) in text for term in e.any)
     if e.all:
